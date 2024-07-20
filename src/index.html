@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Image viewer {{path}}</title>
+</head>
+<!-- BEWARE! 
+If you save this file with auto-formatting the background below will get mangled and will stop working
+ctrl+k ctrl+shift+s to save with out formatting in vscode. 
+-->
+<style>
+    body {
+        background: {{background}};
+    }
+
+    img {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    video {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+</style>
+<script>
+    const imageOffset = 15;
+
+    function newSize(width, height) {
+        let resultWidth = "auto";
+        let resultHeight = "auto";
+        if (height > window.innerHeight && width > window.innerWidth) {
+            // Assuming that the shorter dimension is the height here. Probably not running on a phone
+            if (height >= width) {
+                resultHeight = (window.innerHeight - imageOffset) + "px";
+                resultWidth = "auto";
+            } else {
+                let possible_width_ratio = (window.innerWidth - imageOffset) / width;
+                let possible_height = height * possible_width_ratio;
+                if (possible_height > window.innerHeight) {
+                    resultHeight = (window.innerHeight - imageOffset) + "px";
+                    resultWidth = "auto";
+                } else {
+                    resultHeight = "auto";
+                    resultWidth = (window.innerWidth - imageOffset) + "px";
+                }
+            }
+        }
+        else if (height > window.innerHeight) {
+            resultHeight = (window.innerHeight - imageOffset) + "px";
+            resultWidth = "auto";
+        }
+        else if (width > window.innerWidth) {
+            resultHeight = "auto";
+            resultWidth = (window.innerWidth - imageOffset) + "px";
+        } else {
+            resultWidth = width + "px";
+            resultHeight = height + "px";
+        }
+
+        return [resultWidth, resultHeight];
+    }
+
+    function videoResizeToMax(id) {
+        myImage = new Image()
+        var vid = document.getElementById(id);
+        console.log(
+            "VIDEO: ", id, " window width: ", window.innerWidth, " height: ", window.innerHeight, 
+            " video width: ", vid.videoWidth, " height: ", vid.videoHeight
+        );
+        let resultSize = newSize(vid.videoWidth, vid.videoHeight);
+
+        vid.setAttribute("width", resultSize[0]);
+        vid.setAttribute("height", resultSize[1]);
+
+        console.log("VIDEO: ", id, "result width: ", vid.videoWidth, " height: ", vid.videoHeight);
+
+    }
+
+
+    function resizeToMax(id) {
+        myImage = new Image()
+        var img = document.getElementById(id);
+        myImage.src = img.src;
+        console.log(
+            "image: window width: ", window.innerWidth, " height: ", window.innerHeight, 
+            " image width: ", myImage.width, " height: ", myImage.height
+        );
+
+        let resultSize = newSize(myImage.width, myImage.height);
+        img.style.width = resultSize[0]
+        img.style.height = resultSize[1]
+
+        console.log("result width: ", img.width, " height: ", img.height);
+
+    }
+</script>
+
+<body>
+    {% for image in images -%}
+    {% if image.is_video %}
+    <video id="id_{{image.url}}" onloadedmetadata="videoResizeToMax(this.id)" controls="" loop="">
+        <source src="/img/{{ image.url }}">
+    </video><br />
+    {% else %}
+    <img id="id_{{image.url}}" src="/img/{{ image.url }}" onload="resizeToMax(this.id)"><br />
+    {% endif %}
+    {% endfor -%}
+</body>
+
+</html>
