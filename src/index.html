@@ -67,7 +67,7 @@ ctrl+k ctrl+shift+s to save with out formatting in vscode.
         myImage = new Image()
         var vid = document.getElementById(id);
         console.log(
-            "VIDEO: ", id, " window width: ", window.innerWidth, " height: ", window.innerHeight, 
+            "VIDEO: ", id, " window width: ", window.innerWidth, " height: ", window.innerHeight,
             " video width: ", vid.videoWidth, " height: ", vid.videoHeight
         );
         let resultSize = newSize(vid.videoWidth, vid.videoHeight);
@@ -85,7 +85,7 @@ ctrl+k ctrl+shift+s to save with out formatting in vscode.
         var img = document.getElementById(id);
         myImage.src = img.src;
         console.log(
-            "image: window width: ", window.innerWidth, " height: ", window.innerHeight, 
+            "image: window width: ", window.innerWidth, " height: ", window.innerHeight,
             " image width: ", myImage.width, " height: ", myImage.height
         );
 
@@ -96,6 +96,9 @@ ctrl+k ctrl+shift+s to save with out formatting in vscode.
         console.log("result width: ", img.width, " height: ", img.height);
 
     }
+
+   
+
 </script>
 
 <body>
@@ -109,5 +112,38 @@ ctrl+k ctrl+shift+s to save with out formatting in vscode.
     {% endif %}
     {% endfor -%}
 </body>
+<script>
+var videos = document.getElementsByTagName("video"), fraction = 0.8;
 
+function checkScroll() {
+
+    for (var i = 0; i < videos.length; i++) {
+
+        var video = videos[i];
+
+        var x = video.offsetLeft, y = video.offsetTop, w = video.offsetWidth, h = video.offsetHeight, r = x + w, //right
+            b = y + h, //bottom
+            visibleX, visibleY, visible;
+
+        visibleX = Math.max(0, Math.min(w, window.pageXOffset + window.innerWidth - x, r - window.pageXOffset));
+        visibleY = Math.max(0, Math.min(h, window.pageYOffset + window.innerHeight - y, b - window.pageYOffset));
+
+        visible = visibleX * visibleY / (w * h);
+
+        if (visible > fraction) {
+            console.log("Playing video")
+            video.play();
+        } else {
+            console.log("pausing video")
+            video.pause();
+        }
+
+    }
+
+}
+
+window.addEventListener('scroll', checkScroll, false);
+window.addEventListener('resize', checkScroll, false);
+window.addEventListener('onload', checkScroll, false);
+</script>
 </html>
