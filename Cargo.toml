@@ -6,13 +6,34 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+# Arg parsing
 clap = { version = "4.5", features = ["derive"] }
+
+# Template engine
 tera = { version = "1.16.1", default-features = false }
-serde = { version = "1.0.152", features = ["derive"] }
-serde_json = "1.0.91"
+
+# serialisation (Template engine needs objects to be serialisable)
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Web server
 actix-web = "4"
+# Static file hosting for the webserver
 actix-files = "0.6.2"
-env_logger = "0.11.3"
-webbrowser = "1.0.1"
+# Logger configured from the environment (used by webserver)
+env_logger = "0.11"
+
+# Starting a web browser automatically
+webbrowser = "1.0"
+
+# Workers and async engine
 tokio = "1.25"
-rand = "0.8"
+
+# Randomised sorting
+rand = "0.9"
+
+# Figure out the size of an image
+imagesize = "0.13"
+
+# Nice errors
+thiserror = "2.0"

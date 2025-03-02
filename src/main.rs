@@ -1,6 +1,5 @@
 use std::fs::{self, DirEntry, Metadata};
-use std::io;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime};
 
 use actix_files::NamedFile;
@@ -16,6 +15,10 @@ use rand::prelude::*;
 use serde::Serialize;
 use tera::{Context, Tera};
 use tokio::task::JoinSet;
+
+use crate::error::Error;
+
+pub mod error;
 
 struct AppData {
     target_path: String,
@@ -90,6 +93,15 @@ struct Parameters {
         help="file system path to the images to host",
     )]
     pub path: String,
+
+    #[arg(
+        long, default_value_t = false,
+        help = "recurse down directories"
+    )]
+    pub recursive: bool,
+
+    #[arg(long, default_value_t = 2, help="The number of worker threads to start.")]
+    pub workers: usize,
 }
 
 
@@ -138,7 +150,7 @@ async fn main() {
             .route("/", web::get().to(index))
             .route("/img/{image_name}", web::get().to(image_request))
     })
-    .workers(2)
+    .workers(args.workers)
     .bind(("127.0.0.1", args.port))  // only bind local so this can't be accessed outside the current machine
     .unwrap(); 
 
@@ -150,7 +162,7 @@ async fn main() {
     let server = server_builder.run();
 
     // launch web browser
-    if !webbrowser::open(format!("http://127.0.0.1:{}/", args.port).as_str()).is_ok() {
+    if webbrowser::open(format!("http://127.0.0.1:{}/", args.port).as_str()).is_err() {
         println!("Could not open web browser aborting");
         return;
     }
@@ -162,7 +174,8 @@ async fn main() {
         // if delay is zero then we don't timeout
         set.spawn(async move {
             let duration = Duration::from_secs(args.delay);
-            Ok(tokio::time::sleep(duration).await)
+            tokio::time::sleep(duration).await;
+            Ok(())
         });
     }
     set.spawn(server);
@@ -198,25 +211,32 @@ const ALLOWED_VID_EXTENSIONS: &[&str] = &["mp4", "webm"];
 fn find_files(target_path: &str, filter_value: FilterParameter) -> Vec<ImageInfo> {
 
     let allow_list: Vec<&str> = match filter_value {
-        FilterParameter::None => ALLOWED_IMG_EXTENSIONS.to_vec().into_iter()
-            .chain(ALLOWED_VID_EXTENSIONS.to_vec().into_iter())
+        FilterParameter::None => ALLOWED_IMG_EXTENSIONS.iter().copied()
+            .chain(ALLOWED_VID_EXTENSIONS.iter().copied())
             .collect(),
         FilterParameter::Video => ALLOWED_VID_EXTENSIONS.into(),
         FilterParameter::Images => ALLOWED_IMG_EXTENSIONS.into(),
         FilterParameter::Gif => vec!["gif"],
     };
 
-    let mut result = Vec::new();
+    inner_find_files(&target_path.into(), &allow_list)
+}
 
-    if let Ok(entries) = fs::read_dir(target_path) {
-        for entry in entries {
-            if let Ok(entry) = entry {
-                // Here, `entry` is a `DirEntry`.
+fn inner_find_files(target_dir: &PathBuf, allow_list: &Vec<&str>) -> Vec<ImageInfo> {
+    let mut result = Vec::new();
+    if target_dir.is_dir() {
+        if let Ok(entries) = fs::read_dir(target_dir) {
+            for entry in entries.flatten() {
                 let path = entry.path();
-                let extension = path.extension().map(|p| p.to_str().unwrap()).unwrap_or("");
-                if allow_list.contains(&extension)
-                {
-                    result.push(file_to_image(&entry).unwrap())
+                if path.is_dir() {
+                    let mut new_files = inner_find_files(&path, allow_list);
+                    result.append(&mut new_files);
+                } else {
+                    let extension = path.extension().map(|p| p.to_str().unwrap()).unwrap_or("");
+                    if allow_list.contains(&extension)
+                    {
+                        result.push(file_to_image(&entry).unwrap())
+                    }
                 }
             }
         }
@@ -231,9 +251,11 @@ struct ImageInfo {
     pub source: String,
     pub date: SystemTime,
     pub is_video: bool,
+    pub width: usize,
+    pub height: usize,
 }
 
-fn file_to_image(entry: &DirEntry) -> Result<ImageInfo, io::Error> {
+fn file_to_image(entry: &DirEntry) -> Result<ImageInfo, Error> {
     let filepath = entry.path().to_str().unwrap().to_string();
     let p = Path::new(&filepath);
     let url = p.file_name().unwrap().to_str().unwrap().to_string();
@@ -242,19 +264,34 @@ fn file_to_image(entry: &DirEntry) -> Result<ImageInfo, io::Error> {
     let metadata = entry.metadata()?;
     let date = date(&metadata)?;
 
+    let is_video = ALLOWED_VID_EXTENSIONS.contains(&extension);
+
+    let (width, height) = if is_video {
+        (0, 0)   
+    } else {
+        image_size(&filepath)?
+    };
+
     Ok(ImageInfo {
         url,
         source: p.to_str().unwrap().to_string(),
         date,
-        is_video: ALLOWED_VID_EXTENSIONS.contains(&extension),
+        is_video,
+        width, 
+        height,
     })
 }
 
-fn date(metadata: &Metadata) -> Result<SystemTime, io::Error> {
+fn date(metadata: &Metadata) -> Result<SystemTime, Error> {
     metadata
         .accessed()
         .or(metadata.created())
-        .or(metadata.modified())
+        .or(Ok(metadata.modified()?))
+}
+
+fn image_size(filepath: &str) -> Result<(usize, usize), Error> {
+    let result = imagesize::size(filepath)?;
+    Ok((result.width, result.height))
 }
 
 fn sort(args: &Parameters, input: Vec<ImageInfo>) -> Vec<ImageInfo> {
@@ -264,7 +301,7 @@ fn sort(args: &Parameters, input: Vec<ImageInfo>) -> Vec<ImageInfo> {
     } else if args.date {
         result.sort_by(|a, b| a.date.cmp(&b.date));
     } else if args.randomise {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         result.shuffle(&mut rng);
     }
     result
