@@ -22,7 +22,7 @@ actix-web = "4"
 actix-files = "0.6.2"
 # Logger configured from the environment (used by webserver)
 env_logger = "0.11"
-
+log = "0.4"
 # Starting a web browser automatically
 webbrowser = "1.0"
 
@@ -37,3 +37,6 @@ imagesize = "0.13"
 
 # Nice errors
 thiserror = "2.0"
+
+# Reading (and writing) mp4 video files. We use this to get the dimensions.
+mp4 = "0.14.0"

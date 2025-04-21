@@ -3,145 +3,201 @@
 
 <head>
     <title>Image viewer {{path}}</title>
-</head>
-<!-- BEWARE! 
+    <!-- BEWARE! 
 If you save this file with auto-formatting the background below will get mangled and will stop working
 ctrl+k ctrl+shift+s to save with out formatting in vscode. 
 -->
-<style>
-    body {
-        background: {{background}};
-    }
+    <!-- TODO: Set body background from template-->
+    <style>
+        body {
+            background: hotpink;
+        }
 
-    img {
-        display: block;
-        margin-left: auto;
-        margin-right: auto;
-    }
+        img {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
 
-    video {
-        display: block;
-        margin-left: auto;
-        margin-right: auto;
-    }
-</style>
-<script>
-    const imageOffset = 15;
+        video {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
 
-    function newSize(width, height) {
-        let resultWidth = "auto";
-        let resultHeight = "auto";
-        if (height > window.innerHeight && width > window.innerWidth) {
-            // Assuming that the shorter dimension is the height here. Probably not running on a phone
-            if (height >= width) {
-                resultHeight = (window.innerHeight - imageOffset) + "px";
-                resultWidth = "auto";
-            } else {
-                let possible_width_ratio = (window.innerWidth - imageOffset) / width;
-                let possible_height = height * possible_width_ratio;
-                if (possible_height > window.innerHeight) {
+        .image_container {
+            display: block;
+            margin-left: 0px;
+            margin-right: 0px;
+            margin-top: 5px;
+        }
+    </style>
+    <script>
+        const imageOffset = 15;
+
+        function calculateSize(width, height) {
+            // This gets called for divs, video, and image tags, we need to worry about the width fo video and image
+            // tags so we calculate both here
+
+            let resultWidth = "auto";
+            let resultHeight = "auto";
+            if (height > window.innerHeight && width > window.innerWidth) {
+                // Assuming that the shorter dimension is the height here. Probably not running on a phone
+                if (height >= width) {
                     resultHeight = (window.innerHeight - imageOffset) + "px";
                     resultWidth = "auto";
                 } else {
-                    resultHeight = "auto";
-                    resultWidth = (window.innerWidth - imageOffset) + "px";
+                    let possible_width_ratio = (window.innerWidth - imageOffset) / width;
+                    let possible_height = height * possible_width_ratio;
+                    if (possible_height > window.innerHeight) {
+                        resultHeight = (window.innerHeight - imageOffset) + "px";
+                        resultWidth = "auto";
+                    } else {
+                        resultHeight = "auto";
+                        resultWidth = (window.innerWidth - imageOffset) + "px";
+                    }
+                }
+            }
+            else if (height > window.innerHeight) {
+                resultHeight = (window.innerHeight - imageOffset) + "px";
+                resultWidth = "auto";
+            }
+            else if (width > window.innerWidth) {
+                resultHeight = "auto";
+                resultWidth = (window.innerWidth - imageOffset) + "px";
+            } else {
+                resultWidth = width + "px";
+                resultHeight = height + "px";
+            }
+
+            return [resultWidth, resultHeight];
+        }
+
+        function resizeVideo(the_video) {
+            let resultSize = newSize(the_video.videoWidth, the_video.videoHeight);
+
+            the_video.setAttribute("width", resultSize[0]);
+            the_video.setAttribute("height", resultSize[1]);
+
+            // we also need to resize the parent div as that won't have been given a height when the page loaded.
+
+            the_video.parent.style.height = resultSize[1];
+
+            console.log("VIDEO: ", id, "result width: ", the_video.videoWidth, " height: ", the_video.videoHeight);
+        }
+
+        function resizeDiv(the_div) {
+            const pv_width = the_div.getAttribute('pv_width');
+            const pv_height = the_div.getAttribute('pv_height');
+
+            // Video elements might not have a valid pv_width and pv_height so we need to not do anything with those
+            // so we can resize them later.
+            if (pv_width > 0 && pv_height > 0) {
+                let resultSize = calculateSize(the_div.getAttribute('pv_width'), the_div.getAttribute('pv_height'));
+                the_div.style.height = resultSize[1];
+            }
+        }
+
+        function resizePlaceholderDivs() {
+            const elements = document.getElementsByClassName("image_container");
+            for (var i = 0; i < elements.length; i++) {
+                resizeDiv(elements[i]);
+            };
+        }
+
+        function distanceFromOnScreen(element) {
+            let elementY = element.offsetTop;
+            let elementHeight = element.offsetHeight;
+            let elementBottom = elementY + elementHeight; //bottom
+
+            let windowY = window.pageYOffset;
+            let windowBottom = window.pageYOffset + window.innerHeight;
+
+            if (elementY > windowBottom) { // off the bottom of the screen
+                return elementY - windowBottom;
+            } else if (elementBottom < windowY) { // off the top of the screen
+                return windowY - elementBottom;
+            } else { // on screen (even a tiny fraction of a pixel)
+                return 0;
+            }
+        }
+
+        const display_threshold = 300;
+
+        function createElement(parent) {
+            const is_video = parent.hasAttribute("pv_video");
+            const pv_width = parent.getAttribute("pv_width");
+            const pv_height = parent.getAttribute("pv_height");
+            const pv_url = parent.getAttribute("pv_url");
+
+            if (is_video) {
+                let result_el = document.createElement("video");
+
+                result_el.onloadedmetadata = function () {
+                    resizeDiv(result_el);
+                }
+
+                result_el.id = "id_" + pv_url;
+                result_el.controls = true;
+                result_el.loop = true;
+
+                let source_el = document.createElement("source");
+                source_el.src = pv_url;
+                result_el.appendChild(source_el);
+
+                return result_el;
+            } else {
+                let result_el = document.createElement("img");
+                result_el.src = pv_url;
+
+                let final_size = calculateSize(pv_width, pv_height);
+                result_el.style.width = final_size[0];
+                result_el.style.height = final_size[1];
+
+                return result_el;
+            }
+
+        }
+
+        function checkScroll() {
+            const elements = document.getElementsByClassName("image_container");
+            for (var i = 0; i < elements.length; i++) {
+                const el = elements[i];
+                const distance = distanceFromOnScreen(el);
+                console.log(el.id, "distance from screen: ", distance);
+
+                if (distance < display_threshold) {
+                    // Only add a new node if there aren't any, we don't want to reload the images on screen while scrolling.
+                    if (!el.hasChildNodes()) {
+                        el.appendChild(createElement(el));
+                    }
+                } else {
+                    // off screen
+                    el.replaceChildren();
                 }
             }
         }
-        else if (height > window.innerHeight) {
-            resultHeight = (window.innerHeight - imageOffset) + "px";
-            resultWidth = "auto";
-        }
-        else if (width > window.innerWidth) {
-            resultHeight = "auto";
-            resultWidth = (window.innerWidth - imageOffset) + "px";
-        } else {
-            resultWidth = width + "px";
-            resultHeight = height + "px";
-        }
 
-        return [resultWidth, resultHeight];
-    }
-
-    function videoResizeToMax(id) {
-        myImage = new Image()
-        var vid = document.getElementById(id);
-        console.log(
-            "VIDEO: ", id, " window width: ", window.innerWidth, " height: ", window.innerHeight,
-            " video width: ", vid.videoWidth, " height: ", vid.videoHeight
-        );
-        let resultSize = newSize(vid.videoWidth, vid.videoHeight);
-
-        vid.setAttribute("width", resultSize[0]);
-        vid.setAttribute("height", resultSize[1]);
-
-        console.log("VIDEO: ", id, "result width: ", vid.videoWidth, " height: ", vid.videoHeight);
-
-    }
-
-
-    function resizeToMax(id) {
-        myImage = new Image()
-        var img = document.getElementById(id);
-        myImage.src = img.src;
-        console.log(
-            "image: window width: ", window.innerWidth, " height: ", window.innerHeight,
-            " image width: ", myImage.width, " height: ", myImage.height
-        );
-
-        let resultSize = newSize(myImage.width, myImage.height);
-        img.style.width = resultSize[0]
-        img.style.height = resultSize[1]
-
-        console.log("result width: ", img.width, " height: ", img.height);
-
-    }
-
-</script>
+    </script>
+</head>
 
 <body>
     {% for image in images -%}
-    {% if image.is_video %}
-    <video id="id_{{image.url}}" onloadedmetadata="videoResizeToMax(this.id)" controls="" loop="">
-        <source src="/img/{{ image.url }}">
-    </video><br />
-    {% else %}
-    <img id="id_{{image.url}}" src="/img/{{ image.url }}" onload="resizeToMax(this.id)"><br />
-    {% endif %}
+
+    <div id="id_div_{{image.url}}" class="image_container" pv_width="{{image.width}}" pv_height="{{image.height}}"
+        pv_url="/img/{{image.url}}" {% if image.is_video %} pv_video="true" {% endif %}></div>
     {% endfor -%}
 </body>
 <script>
-var videos = document.getElementsByTagName("video"), fraction = 0.8;
+    // Make sure all the divs are resized to their correct height before we do anything else
+    resizePlaceholderDivs();
 
-function checkScroll() {
+    window.addEventListener('scroll', checkScroll, false);
+    window.addEventListener('resize', checkScroll, false);
 
-    for (var i = 0; i < videos.length; i++) {
+    // called now rather than adding an onload event listener so that it happens correctly on refresh.
+    checkScroll();
 
-        var video = videos[i];
-
-        var x = video.offsetLeft, y = video.offsetTop, w = video.offsetWidth, h = video.offsetHeight, r = x + w, //right
-            b = y + h, //bottom
-            visibleX, visibleY, visible;
-
-        visibleX = Math.max(0, Math.min(w, window.pageXOffset + window.innerWidth - x, r - window.pageXOffset));
-        visibleY = Math.max(0, Math.min(h, window.pageYOffset + window.innerHeight - y, b - window.pageYOffset));
-
-        visible = visibleX * visibleY / (w * h);
-
-        if (visible > fraction) {
-            console.log("Playing video")
-            video.play();
-        } else {
-            console.log("pausing video")
-            video.pause();
-        }
-
-    }
-
-}
-
-window.addEventListener('scroll', checkScroll, false);
-window.addEventListener('resize', checkScroll, false);
-window.addEventListener('onload', checkScroll, false);
 </script>
+
 </html>

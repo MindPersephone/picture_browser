@@ -68,6 +68,9 @@ editors like to reformat the template fields that use the `{{value}}` markers al
 javascript. This can cause problems around the background colour. Note that in vs code pressing ctrl+k then ctrl+shift+s 
 will save without triggering the formatter.
 
+Logging is controlled by [env_logger](https://docs.rs/env_logger/latest/env_logger/). See the docs for it for 
+configuring log levels and so on.
+
 ### Design requirements
 
 * Must not load external files at runtime. No loading external javascript, fonts, css, etc.
@@ -76,9 +79,6 @@ will save without triggering the formatter.
 * Must be fast enough
 * Must work on most systems. 
 * Prefer not to commit code crimes.
-
-## TODO:
-* Verbose flag to enable logging (chatty by default at the moment)
 
 ## Maybe one day:
 * Infinite scroll mode for larger image sets. (Note: disable shutdown timeout when implementing this)
