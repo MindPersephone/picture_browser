@@ -9,7 +9,7 @@ ctrl+k ctrl+shift+s to save with out formatting in vscode.
 -->
     <style>
         body {
-            background: {{background}};
+            background: {{background}}
         }
 
         img {
@@ -80,9 +80,9 @@ ctrl+k ctrl+shift+s to save with out formatting in vscode.
 
             // we also need to resize the parent div as that won't have been given a height when the page loaded.
 
-            the_video.parent.style.height = resultSize[1];
+            the_video.parentNode.style.height = resultSize[1];
 
-            console.log("VIDEO: ", id, "result width: ", the_video.videoWidth, " height: ", the_video.videoHeight);
+            console.log("VIDEO: ", the_video.id, "result width: ", the_video.videoWidth, " height: ", the_video.videoHeight);
         }
 
         function resizeDiv(the_div) {
@@ -124,12 +124,14 @@ ctrl+k ctrl+shift+s to save with out formatting in vscode.
         const display_threshold = 300;
 
         function createElement(parent) {
+
             const is_video = parent.hasAttribute("pv_video");
             const pv_width = parent.getAttribute("pv_width");
             const pv_height = parent.getAttribute("pv_height");
             const pv_url = parent.getAttribute("pv_url");
 
             if (is_video) {
+                console.log("creating video for ", parent.id);
                 let result_el = document.createElement("video");
 
                 result_el.onloadedmetadata = function () {
@@ -146,6 +148,7 @@ ctrl+k ctrl+shift+s to save with out formatting in vscode.
 
                 return result_el;
             } else {
+                console.log("creating image for ", parent.id);
                 let result_el = document.createElement("img");
                 result_el.src = pv_url;
 
@@ -163,16 +166,39 @@ ctrl+k ctrl+shift+s to save with out formatting in vscode.
             for (var i = 0; i < elements.length; i++) {
                 const el = elements[i];
                 const distance = distanceFromOnScreen(el);
-                console.log(el.id, "distance from screen: ", distance);
+                console.debug(el.id, "distance from screen: ", distance);
 
                 if (distance < display_threshold) {
                     // Only add a new node if there aren't any, we don't want to reload the images on screen while scrolling.
                     if (!el.hasChildNodes()) {
+                        console.info("creating element for ", el.id, " distance: ", distance);
                         el.appendChild(createElement(el));
+                    }
+
+                    if (el.hasAttribute("pv_video")) {
+                        if (distance == 0) {
+                            // a video tag should "auto play" when it comes on screen
+
+                            console.info("checking video?", el);
+                            const video_el = el.firstChild;
+                            if (video_el.paused) {
+                                console.info("starting video!");
+                                video_el.play();
+                            }
+                        } else {
+                            // as soon as the video is off screen pause it again.
+                            const video_el = el.firstChild;
+                            if (!video_el.paused) {
+                                console.info("pausing video!");
+                                video_el.pause();
+                            }
+                        }
                     }
                 } else {
                     // off screen
-                    el.replaceChildren();
+                    if (el.hasChildNodes) {
+                        el.replaceChildren();
+                    }
                 }
             }
         }

@@ -78,7 +78,7 @@ files from outside of local host, and even then it should only be loading the im
 * Prefer not to commit code crimes.
 
 ## TODO:
-Currently no planned features. We'll see how things go, but this currently covers all my use cases.
+re-implement auto video start
 
 ## Maybe one day:
 * Install function to add a magic entry to the windows registry to enable on right click menu like vs code or other 
