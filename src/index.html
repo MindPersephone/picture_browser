@@ -7,10 +7,9 @@
 If you save this file with auto-formatting the background below will get mangled and will stop working
 ctrl+k ctrl+shift+s to save with out formatting in vscode. 
 -->
-    <!-- TODO: Set body background from template-->
     <style>
         body {
-            background: hotpink;
+            background: {{background}};
         }
 
         img {
@@ -74,7 +73,7 @@ ctrl+k ctrl+shift+s to save with out formatting in vscode.
         }
 
         function resizeVideo(the_video) {
-            let resultSize = newSize(the_video.videoWidth, the_video.videoHeight);
+            let resultSize = calculateSize(the_video.videoWidth, the_video.videoHeight);
 
             the_video.setAttribute("width", resultSize[0]);
             the_video.setAttribute("height", resultSize[1]);
@@ -134,7 +133,7 @@ ctrl+k ctrl+shift+s to save with out formatting in vscode.
                 let result_el = document.createElement("video");
 
                 result_el.onloadedmetadata = function () {
-                    resizeDiv(result_el);
+                    resizeVideo(result_el);
                 }
 
                 result_el.id = "id_" + pv_url;

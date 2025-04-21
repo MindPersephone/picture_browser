@@ -25,26 +25,16 @@ cargo run -- --randomise path/to/image/folder
 ```
 
 If you want to filter to only have particular kinds of files displayed the `--filter` parameter takes `video` `images` 
-`gif` or `none` with none being no filtering. The others will display only the kind of files you selected. Note gif 
-files are included in `images`
+`gif` or `none` with none, being the default, no filtering. The others will display only the kind of files you selected. 
+Note gif files are included in `images`
 
 ```
 cargo run -- --filter gif path/to/image/folder
 ```
 
-By default the server part will time out and shutdown automatically after 10 seconds. This may not be long enough if you
-have a lot of images. You can set how long the system waits with `--delay`
-
-If you have video files it is recommended to use `--delay 0` which will prevent the automatic shutdown from happening.
-Most web browsers do not load the full video file when the page loads, only the first second or so, which means another
-request will happen when or if you eventually press the play button.
-
 Note: This will only bind to local host. This can not and should not be used to host images publicly. Yes you probably
-could use a proxy or something, but you're on your own. That is not what this was designed for. Don't.
-
-```
-cargo run -- --delay 0 path/to/image/folder
-```
+could use a proxy or something, but you're on your own. That is not what this was designed for. Don't. Security issues 
+related to running this publicly will be ignored.
 
 The background colour of the page defaults to the [css colour "hotpink"](https://htmlcolorcodes.com/color-names/) This
 can be changed with the `--background` or `-b` parameter. Any css compatible colour can be used here. `black`, `#FFFFFF`
@@ -53,6 +43,10 @@ can be changed with the `--background` or `-b` parameter. Any css compatible col
 If something is already using the port 6700 you may need to change the default, that can be done by passing in the 
 `--port` or `-p` parameter with a valid port value. Note values under 1024 may need admin privileges, pick something 
 between 1025 and 65535. It is beyond the scope of this readme to explain why.
+
+```
+cargo run -- --background #66FF77 -p 6969 path/to/image/folder
+```
 
 ## Allowed file types
 
@@ -63,13 +57,16 @@ types please feel free to add a pull request. The constants containing these are
 
 ## Development
 
-Mostly a normal rust project, cargo build etc, however be careful when editing the index.html template. Sometimes 
-editors like to reformat the template fields that use the `{{value}}` markers also being used as blocks css and 
-javascript. This can cause problems around the background colour. Note that in vs code pressing ctrl+k then ctrl+shift+s 
-will save without triggering the formatter.
+Mostly a normal rust and html project, raw javascript, cargo build etc, however be careful when editing the index.html 
+template. Sometimes editors like to reformat the template fields that use the `{{value}}` markers also being used as 
+blocks css and javascript. This can cause problems around the background colour. Note that in vs code pressing ctrl+k 
+then ctrl+shift+s will save without triggering the formatter (at least in windows).
 
 Logging is controlled by [env_logger](https://docs.rs/env_logger/latest/env_logger/). See the docs for it for 
 configuring log levels and so on.
+
+Also note that the index.html page is a single file page. Everything must be in the one file. It *MUST NOT* load any 
+files from outside of local host, and even then it should only be loading the images that it has been asked to load.
 
 ### Design requirements
 
@@ -80,8 +77,10 @@ configuring log levels and so on.
 * Must work on most systems. 
 * Prefer not to commit code crimes.
 
+## TODO:
+Currently no planned features. We'll see how things go, but this currently covers all my use cases.
+
 ## Maybe one day:
-* Infinite scroll mode for larger image sets. (Note: disable shutdown timeout when implementing this)
 * Install function to add a magic entry to the windows registry to enable on right click menu like vs code or other 
 tools
 * Add task bar icons when running in windows like that.
