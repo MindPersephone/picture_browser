@@ -35,7 +35,7 @@ ctrl+k ctrl+shift+s to save with out formatting in vscode.
         const imageOffset = 15;
 
         function calculateSize(width, height) {
-            // This gets called for divs, video, and image tags, we need to worry about the width fo video and image
+            // This gets called for divs, video, and image tags, we need to worry about the width for video and image
             // tags so we calculate both here
 
             let resultWidth = "auto";
@@ -78,8 +78,7 @@ ctrl+k ctrl+shift+s to save with out formatting in vscode.
             the_video.setAttribute("width", resultSize[0]);
             the_video.setAttribute("height", resultSize[1]);
 
-            // we also need to resize the parent div as that won't have been given a height when the page loaded.
-
+            // we also need to resize the parent div as that might not have been given a height when the page loaded.
             the_video.parentNode.style.height = resultSize[1];
 
             console.log("VIDEO: ", the_video.id, "result width: ", the_video.videoWidth, " height: ", the_video.videoHeight);
@@ -220,7 +219,7 @@ ctrl+k ctrl+shift+s to save with out formatting in vscode.
     window.addEventListener('scroll', checkScroll, false);
     window.addEventListener('resize', checkScroll, false);
 
-    // called now rather than adding an onload event listener so that it happens correctly on refresh.
+    // called now for initial init rather than adding an onload event listener so that it happens correctly on refresh.
     checkScroll();
 
 </script>

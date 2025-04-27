@@ -124,6 +124,10 @@ async fn main() {
 
     let images: Vec<ImageInfo> = find_files(&args.path, args.filter, args.recursive);
     info!("Found {} files", images.len());
+    if images.is_empty() {
+        info!("Nothing found to display");
+        return;
+    }
 
     let sorted_images = sort(&args, images);
 
