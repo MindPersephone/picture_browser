@@ -5,12 +5,16 @@ use std::fs::Metadata;
 use std::io::BufReader;
 use std::path::Path;
 use std::path::PathBuf;
+use std::process::Command;
 use std::time::SystemTime;
 
 use imagesize::size;
+use log::info;
 use log::warn;
 use mp4::Mp4Reader;
 use serde::Serialize;
+use serde_json::Value;
+use which::which;
 
 use crate::error::Error;
 use crate::FilterParameter;
@@ -127,21 +131,63 @@ fn mp4_size(filepath: &str) -> Result<(usize, usize), Error> {
 
     let mp4_result = Mp4Reader::read_header(reader, size);
     if let Err(mp4_error) = mp4_result {
-        warn!("Could not get metadata from {filepath}, using default value. {mp4_error:?}");
-        return Ok((0, 0));
+        warn!("Could not get metadata from {filepath}, attempting ffmpeg. {mp4_error:?}");
+        let ffmpeg_result = try_ffmpeg(filepath);
+        if let Err(ffmpeg_err) = ffmpeg_result {
+            warn!("Could not get metadata with ffmpeg either {filepath}. Returning zeros. {ffmpeg_err}");
+            return Ok((0, 0));
+        }
+
+        return ffmpeg_result;
     }
 
     let mut result_width = 0;
     let mut result_height = 0;
 
     for track in mp4_result.unwrap().tracks().values() {
-        if track.width() > result_width {
-            result_width = track.width();
-        }
-        if track.height() > result_height {
-            result_height = track.height();
-        }
+        result_width = result_width.max(track.width());
+        result_height = result_height.max(track.height());
     }
 
     Ok((result_width as usize, result_height as usize))
+}
+
+fn try_ffmpeg(filepath: &str) -> Result<(usize, usize), Error> {
+    let which_result = which("ffprobe");
+    if let Err(err) = which_result {
+        warn!(
+            "Could not find ffprobe, you may need to install ffmpeg: {}",
+            err
+        );
+        return Err(Error::MissingFFProbe);
+    }
+
+    let output = Command::new("ffprobe")
+        .args([
+            "-i",
+            filepath,
+            "-print_format",
+            "json",
+            "-find_stream_info",
+            "-show_streams",
+            "-v",
+            "quiet",
+        ])
+        .output()?;
+
+    let json_result: Value = serde_json::from_slice(&output.stdout)?;
+
+    let mut width: usize = 0;
+    let mut height: usize = 0;
+
+    for stream in json_result["streams"].as_array().unwrap() {
+        let stream_object = stream.as_object().unwrap();
+        if stream_object.contains_key("width") && stream_object.contains_key("height") {
+            width = width.max(stream_object.get("width").unwrap().as_u64().unwrap() as usize);
+            height = height.max(stream_object.get("height").unwrap().as_u64().unwrap() as usize);
+        }
+    }
+
+    info!("success using ffmpeg: {},{}", width, height);
+    return Ok((width, height));
 }

@@ -40,3 +40,6 @@ thiserror = "2.0"
 
 # Reading (and writing) mp4 video files. We use this to get the dimensions.
 mp4 = "0.14.0"
+
+# figuring out if ffmpeg is installed
+which = "8.0.0"

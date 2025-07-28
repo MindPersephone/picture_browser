@@ -33,6 +33,7 @@ ctrl+k ctrl+shift+s to save with out formatting in vscode.
     </style>
     <script>
         const imageOffset = 15;
+        const display_threshold = 300;
 
         function calculateSize(width, height) {
             // This gets called for divs, video, and image tags, we need to worry about the width for video and image
@@ -120,44 +121,50 @@ ctrl+k ctrl+shift+s to save with out formatting in vscode.
             }
         }
 
-        const display_threshold = 300;
+        function createVideo(parent) {
+            console.log("creating video for ", parent.id);
+            const pv_url = parent.getAttribute("pv_url");
 
-        function createElement(parent) {
+            let result_el = document.createElement("video");
 
-            const is_video = parent.hasAttribute("pv_video");
+            result_el.onloadedmetadata = function () {
+                resizeVideo(result_el);
+            }
+
+            result_el.id = "id_" + pv_url;
+            result_el.controls = true;
+            result_el.loop = true;
+
+            let source_el = document.createElement("source");
+            source_el.src = pv_url;
+            result_el.appendChild(source_el);
+
+            return result_el;
+        }
+
+        function createImage(parent) {
+            console.log("creating image for ", parent.id);
             const pv_width = parent.getAttribute("pv_width");
             const pv_height = parent.getAttribute("pv_height");
             const pv_url = parent.getAttribute("pv_url");
 
-            if (is_video) {
-                console.log("creating video for ", parent.id);
-                let result_el = document.createElement("video");
+            let result_el = document.createElement("img");
+            result_el.src = pv_url;
 
-                result_el.onloadedmetadata = function () {
-                    resizeVideo(result_el);
-                }
+            let final_size = calculateSize(pv_width, pv_height);
+            result_el.style.width = final_size[0];
+            result_el.style.height = final_size[1];
 
-                result_el.id = "id_" + pv_url;
-                result_el.controls = true;
-                result_el.loop = true;
+            return result_el;
+        }
 
-                let source_el = document.createElement("source");
-                source_el.src = pv_url;
-                result_el.appendChild(source_el);
 
-                return result_el;
+        function createElement(parent) {
+            if (parent.hasAttribute("pv_video")) {
+                return createVideo(parent);
             } else {
-                console.log("creating image for ", parent.id);
-                let result_el = document.createElement("img");
-                result_el.src = pv_url;
-
-                let final_size = calculateSize(pv_width, pv_height);
-                result_el.style.width = final_size[0];
-                result_el.style.height = final_size[1];
-
-                return result_el;
+                return createImage(parent);
             }
-
         }
 
         function checkScroll() {
@@ -165,30 +172,26 @@ ctrl+k ctrl+shift+s to save with out formatting in vscode.
             for (var i = 0; i < elements.length; i++) {
                 const el = elements[i];
                 const distance = distanceFromOnScreen(el);
-                console.debug(el.id, "distance from screen: ", distance);
 
                 if (distance < display_threshold) {
                     // Only add a new node if there aren't any, we don't want to reload the images on screen while scrolling.
                     if (!el.hasChildNodes()) {
-                        console.info("creating element for ", el.id, " distance: ", distance);
+                        console.debug("creating element for ", el.id, " distance: ", distance);
                         el.appendChild(createElement(el));
                     }
 
                     if (el.hasAttribute("pv_video")) {
                         if (distance == 0) {
                             // a video tag should "auto play" when it comes on screen
-
-                            console.info("checking video?", el);
                             const video_el = el.firstChild;
                             if (video_el.paused) {
-                                console.info("starting video!");
+                                console.debug("starting video!");
                                 video_el.play();
                             }
                         } else {
                             // as soon as the video is off screen pause it again.
                             const video_el = el.firstChild;
                             if (!video_el.paused) {
-                                console.info("pausing video!");
                                 video_el.pause();
                             }
                         }

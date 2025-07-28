@@ -91,7 +91,7 @@ struct Parameters {
     )]
     pub recursive: bool,
 
-    #[arg(long, default_value_t = 2, help="The number of worker threads to start.")]
+    #[arg(long, default_value_t = 8, help="The number of worker threads to start.")]
     pub workers: usize,
 
     #[arg(long, default_value_t = false, help="Reload the index template on every page load (useful when developing)")]
