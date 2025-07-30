@@ -181,7 +181,7 @@ ctrl+k ctrl+shift+s to save with out formatting in vscode.
                     }
 
                     if (el.hasAttribute("pv_video")) {
-                        if (distance == 0) {
+                        if (distance <= 20) {
                             // a video tag should "auto play" when it comes on screen
                             const video_el = el.firstChild;
                             if (video_el.paused) {

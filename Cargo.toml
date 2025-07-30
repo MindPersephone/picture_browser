@@ -21,22 +21,22 @@ actix-web = "4"
 # Static file hosting for the webserver
 actix-files = "0.6.2"
 # Logger configured from the environment (used by webserver)
-env_logger = "0.11"
+env_logger = "^0.11"
 log = "0.4"
 # Starting a web browser automatically
-webbrowser = "1.0"
+webbrowser = "^1.0"
 
 # Workers and async engine
 tokio = "1.25"
 
 # Randomised sorting
-rand = "0.9"
+rand = "^0.9"
 
 # Figure out the size of an image
-imagesize = "0.13"
+imagesize = "0.14"
 
 # Nice errors
-thiserror = "2.0"
+thiserror = "^2.0"
 
 # Reading (and writing) mp4 video files. We use this to get the dimensions.
 mp4 = "0.14.0"
