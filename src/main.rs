@@ -1,12 +1,9 @@
-
-use log::{debug, info, warn};
 use actix_files::NamedFile;
+use log::{debug, info, warn};
 
 use actix_web::http::header::ContentType;
 use actix_web::middleware::Logger;
-use actix_web::{
-    web, App, HttpRequest, HttpResponse, HttpServer, Responder, Result,
-};
+use actix_web::{web, App, HttpRequest, HttpResponse, HttpServer, Responder, Result};
 use clap::{Parser, ValueEnum};
 use env_logger::Env;
 use rand::prelude::*;
@@ -26,17 +23,16 @@ struct AppData {
     hot_reload: bool,
 }
 
-
 #[derive(Parser, Debug)]
 #[command(version, about)]
 struct Parameters {
     #[arg(
-        short, 
-        long, 
-        default_value_t = 6700, 
-        help="port to use for the web server",
+        short,
+        long,
+        default_value_t = 6700,
+        help = "port to use for the web server"
     )]
-    pub port : u16,
+    pub port: u16,
 
     #[arg(
         long,
@@ -55,18 +51,18 @@ struct Parameters {
     pub date: bool,
 
     #[arg(
-        long, 
-        default_value_t = false, 
+        long,
+        default_value_t = false,
         conflicts_with_all=["date", "randomise"],
         help="sort by the order of the images by name",
     )]
-    pub alphabetical:bool,
+    pub alphabetical: bool,
 
     #[arg(
-        short, 
-        long, 
+        short,
+        long,
         default_value = "hotpink",
-        help="The background colour to use for the page. Accepts any css compatible colour string",
+        help = "The background colour to use for the page. Accepts any css compatible colour string"
     )]
     pub background: String,
 
@@ -79,25 +75,36 @@ struct Parameters {
     pub filter: FilterParameter,
 
     #[arg(
-        index=1,
-        required=true,
-        help="file system path to the images to host",
+        index = 1,
+        required = true,
+        help = "file system path to the images to host"
     )]
     pub path: String,
 
-    #[arg(
-        long, default_value_t = false,
-        help = "recurse down directories"
-    )]
+    #[arg(long, default_value_t = false, help = "recurse down directories")]
     pub recursive: bool,
 
-    #[arg(long, default_value_t = 8, help="The number of worker threads to start.")]
+    #[arg(
+        long,
+        default_value_t = 8,
+        help = "The number of worker threads to start."
+    )]
     pub workers: usize,
 
-    #[arg(long, default_value_t = false, help="Reload the index template on every page load (useful when developing)")]
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Reload the index template on every page load (useful when developing)"
+    )]
     pub hot_reload: bool,
-}
 
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Don't open the web browser automatically"
+    )]
+    pub no_browser: bool,
+}
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
 pub enum FilterParameter {
@@ -115,7 +122,6 @@ impl std::fmt::Display for FilterParameter {
             .fmt(f)
     }
 }
-
 
 #[actix_web::main]
 async fn main() {
@@ -146,21 +152,23 @@ async fn main() {
     let server_builder = HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
-            .app_data(web_data.clone()) 
+            .app_data(web_data.clone())
             .route("/index.html", web::get().to(index))
             .route("/", web::get().to(index))
             .route("/img/{image_name}", web::get().to(image_request))
     })
     .workers(args.workers)
-    .bind(("127.0.0.1", args.port))  // only bind local so this can't be accessed outside the current machine
-    .unwrap(); 
+    .bind(("127.0.0.1", args.port)) // only bind local so this can't be accessed outside the current machine
+    .unwrap();
 
     let server = server_builder.run();
 
-    // launch web browser
-    if webbrowser::open(format!("http://127.0.0.1:{}/", args.port).as_str()).is_err() {
-        warn!("Could not open web browser aborting");
-        return;
+    if !args.no_browser {
+        // launch web browser
+        if webbrowser::open(&format!("http://127.0.0.1:{}/", args.port)).is_err() {
+            warn!("Could not open web browser aborting");
+            return;
+        }
     }
 
     // the server must be awaited otherwise it will not actually do anything.
@@ -199,7 +207,7 @@ fn sort(args: &Parameters, input: Vec<ImageInfo>) -> Vec<ImageInfo> {
     if args.alphabetical {
         result.sort_by(|a, b| a.url.cmp(&b.url));
     } else if args.date {
-        result.sort_by(|a, b| a.date.cmp(&b.date));
+        result.sort_by(|a, b| b.date.cmp(&a.date));
     } else if args.randomise {
         let mut rng = rand::rng();
         result.shuffle(&mut rng);

@@ -1,230 +1,292 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
+    <head>
+        <title>Image viewer {{path}}</title>
+        <style>
+            body {
+                background: hotpink;
+            }
 
-<head>
-    <title>Image viewer {{path}}</title>
-    <!-- BEWARE! 
-If you save this file with auto-formatting the background below will get mangled and will stop working
-ctrl+k ctrl+shift+s to save with out formatting in vscode. 
--->
-    <style>
-        body {
-            background: {{background}}
-        }
+            img {
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+            }
 
-        img {
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
-        }
+            video {
+                display: block;
+                margin-left: auto;
+                margin-right: auto;
+            }
 
-        video {
-            display: block;
-            margin-left: auto;
-            margin-right: auto;
-        }
+            .image_container {
+                display: block;
+                margin-left: 0px;
+                margin-right: 0px;
+                margin-top: 5px;
+            }
+        </style>
+        <script>
+            const imageOffset = 15;
+            const display_threshold = 300;
 
-        .image_container {
-            display: block;
-            margin-left: 0px;
-            margin-right: 0px;
-            margin-top: 5px;
-        }
-    </style>
-    <script>
-        const imageOffset = 15;
-        const display_threshold = 300;
+            function calculateSize(width, height) {
+                // This gets called for divs, video, and image tags, we need to worry about the width for video and image
+                // tags so we calculate both here
 
-        function calculateSize(width, height) {
-            // This gets called for divs, video, and image tags, we need to worry about the width for video and image
-            // tags so we calculate both here
-
-            let resultWidth = "auto";
-            let resultHeight = "auto";
-            if (height > window.innerHeight && width > window.innerWidth) {
-                // Assuming that the shorter dimension is the height here. Probably not running on a phone
-                if (height >= width) {
-                    resultHeight = (window.innerHeight - imageOffset) + "px";
-                    resultWidth = "auto";
-                } else {
-                    let possible_width_ratio = (window.innerWidth - imageOffset) / width;
-                    let possible_height = height * possible_width_ratio;
-                    if (possible_height > window.innerHeight) {
-                        resultHeight = (window.innerHeight - imageOffset) + "px";
+                let resultWidth = "auto";
+                let resultHeight = "auto";
+                if (height > window.innerHeight && width > window.innerWidth) {
+                    // Assuming that the shorter dimension is the height here. Probably not running on a phone
+                    if (height >= width) {
+                        resultHeight = window.innerHeight - imageOffset + "px";
                         resultWidth = "auto";
                     } else {
-                        resultHeight = "auto";
-                        resultWidth = (window.innerWidth - imageOffset) + "px";
-                    }
-                }
-            }
-            else if (height > window.innerHeight) {
-                resultHeight = (window.innerHeight - imageOffset) + "px";
-                resultWidth = "auto";
-            }
-            else if (width > window.innerWidth) {
-                resultHeight = "auto";
-                resultWidth = (window.innerWidth - imageOffset) + "px";
-            } else {
-                resultWidth = width + "px";
-                resultHeight = height + "px";
-            }
-
-            return [resultWidth, resultHeight];
-        }
-
-        function resizeVideo(the_video) {
-            let resultSize = calculateSize(the_video.videoWidth, the_video.videoHeight);
-
-            the_video.setAttribute("width", resultSize[0]);
-            the_video.setAttribute("height", resultSize[1]);
-
-            // we also need to resize the parent div as that might not have been given a height when the page loaded.
-            the_video.parentNode.style.height = resultSize[1];
-
-            console.log("VIDEO: ", the_video.id, "result width: ", the_video.videoWidth, " height: ", the_video.videoHeight);
-        }
-
-        function resizeDiv(the_div) {
-            const pv_width = the_div.getAttribute('pv_width');
-            const pv_height = the_div.getAttribute('pv_height');
-
-            // Video elements might not have a valid pv_width and pv_height so we need to not do anything with those
-            // so we can resize them later.
-            if (pv_width > 0 && pv_height > 0) {
-                let resultSize = calculateSize(the_div.getAttribute('pv_width'), the_div.getAttribute('pv_height'));
-                the_div.style.height = resultSize[1];
-            }
-        }
-
-        function resizePlaceholderDivs() {
-            const elements = document.getElementsByClassName("image_container");
-            for (var i = 0; i < elements.length; i++) {
-                resizeDiv(elements[i]);
-            };
-        }
-
-        function distanceFromOnScreen(element) {
-            let elementY = element.offsetTop;
-            let elementHeight = element.offsetHeight;
-            let elementBottom = elementY + elementHeight; //bottom
-
-            let windowY = window.pageYOffset;
-            let windowBottom = window.pageYOffset + window.innerHeight;
-
-            if (elementY > windowBottom) { // off the bottom of the screen
-                return elementY - windowBottom;
-            } else if (elementBottom < windowY) { // off the top of the screen
-                return windowY - elementBottom;
-            } else { // on screen (even a tiny fraction of a pixel)
-                return 0;
-            }
-        }
-
-        function createVideo(parent) {
-            console.log("creating video for ", parent.id);
-            const pv_url = parent.getAttribute("pv_url");
-
-            let result_el = document.createElement("video");
-
-            result_el.onloadedmetadata = function () {
-                resizeVideo(result_el);
-            }
-
-            result_el.id = "id_" + pv_url;
-            result_el.controls = true;
-            result_el.loop = true;
-
-            let source_el = document.createElement("source");
-            source_el.src = pv_url;
-            result_el.appendChild(source_el);
-
-            return result_el;
-        }
-
-        function createImage(parent) {
-            console.log("creating image for ", parent.id);
-            const pv_width = parent.getAttribute("pv_width");
-            const pv_height = parent.getAttribute("pv_height");
-            const pv_url = parent.getAttribute("pv_url");
-
-            let result_el = document.createElement("img");
-            result_el.src = pv_url;
-
-            let final_size = calculateSize(pv_width, pv_height);
-            result_el.style.width = final_size[0];
-            result_el.style.height = final_size[1];
-
-            return result_el;
-        }
-
-
-        function createElement(parent) {
-            if (parent.hasAttribute("pv_video")) {
-                return createVideo(parent);
-            } else {
-                return createImage(parent);
-            }
-        }
-
-        function checkScroll() {
-            const elements = document.getElementsByClassName("image_container");
-            for (var i = 0; i < elements.length; i++) {
-                const el = elements[i];
-                const distance = distanceFromOnScreen(el);
-
-                if (distance < display_threshold) {
-                    // Only add a new node if there aren't any, we don't want to reload the images on screen while scrolling.
-                    if (!el.hasChildNodes()) {
-                        console.debug("creating element for ", el.id, " distance: ", distance);
-                        el.appendChild(createElement(el));
-                    }
-
-                    if (el.hasAttribute("pv_video")) {
-                        if (distance <= 20) {
-                            // a video tag should "auto play" when it comes on screen
-                            const video_el = el.firstChild;
-                            if (video_el.paused) {
-                                console.debug("starting video!");
-                                video_el.play();
-                            }
+                        let possible_width_ratio =
+                            (window.innerWidth - imageOffset) / width;
+                        let possible_height = height * possible_width_ratio;
+                        if (possible_height > window.innerHeight) {
+                            resultHeight =
+                                window.innerHeight - imageOffset + "px";
+                            resultWidth = "auto";
                         } else {
-                            // as soon as the video is off screen pause it again.
-                            const video_el = el.firstChild;
-                            if (!video_el.paused) {
-                                video_el.pause();
-                            }
+                            resultHeight = "auto";
+                            resultWidth =
+                                window.innerWidth - imageOffset + "px";
                         }
                     }
+                } else if (height > window.innerHeight) {
+                    resultHeight = window.innerHeight - imageOffset + "px";
+                    resultWidth = "auto";
+                } else if (width > window.innerWidth) {
+                    resultHeight = "auto";
+                    resultWidth = window.innerWidth - imageOffset + "px";
                 } else {
-                    // off screen
-                    if (el.hasChildNodes) {
-                        el.replaceChildren();
+                    resultWidth = width + "px";
+                    resultHeight = height + "px";
+                }
+
+                return [resultWidth, resultHeight];
+            }
+
+            function resizeVideo(the_video) {
+                let resultSize = calculateSize(
+                    the_video.videoWidth,
+                    the_video.videoHeight,
+                );
+
+                the_video.setAttribute("width", resultSize[0]);
+                the_video.setAttribute("height", resultSize[1]);
+
+                // we also need to resize the parent div as that might not have been given a height when the page loaded.
+                the_video.parentNode.style.height = resultSize[1];
+
+                console.log(
+                    "VIDEO: ",
+                    the_video.id,
+                    "result width: ",
+                    the_video.videoWidth,
+                    " height: ",
+                    the_video.videoHeight,
+                );
+            }
+
+            function resizeDiv(the_div) {
+                const pv_width = the_div.getAttribute("pv_width");
+                const pv_height = the_div.getAttribute("pv_height");
+
+                // Video elements might not have a valid pv_width and pv_height so we need to not do anything with those
+                // so we can resize them later.
+                if (pv_width > 0 && pv_height > 0) {
+                    let resultSize = calculateSize(
+                        the_div.getAttribute("pv_width"),
+                        the_div.getAttribute("pv_height"),
+                    );
+                    the_div.style.height = resultSize[1];
+                }
+            }
+
+            function resizePlaceholderDivs() {
+                const elements =
+                    document.getElementsByClassName("image_container");
+                for (var i = 0; i < elements.length; i++) {
+                    resizeDiv(elements[i]);
+                }
+            }
+
+            function distanceFromOnScreen(element) {
+                let elementY = element.offsetTop;
+                let elementHeight = element.offsetHeight;
+                let elementBottom = elementY + elementHeight; //bottom
+
+                let windowY = window.pageYOffset;
+                let windowBottom = window.pageYOffset + window.innerHeight;
+
+                if (elementY > windowBottom) {
+                    // off the bottom of the screen
+                    return elementY - windowBottom;
+                } else if (elementBottom < windowY) {
+                    // off the top of the screen
+                    return windowY - elementBottom;
+                } else {
+                    // on screen (even a tiny fraction of a pixel)
+                    return 0;
+                }
+            }
+
+            function createVideo(parent) {
+                console.log("creating video for ", parent.id);
+                const pv_url = parent.getAttribute("pv_url");
+
+                let result_el = document.createElement("video");
+
+                result_el.onloadedmetadata = function () {
+                    resizeVideo(result_el);
+                };
+
+                result_el.id = "id_" + pv_url;
+                result_el.controls = true;
+                result_el.loop = true;
+
+                let source_el = document.createElement("source");
+                source_el.src = pv_url;
+                result_el.appendChild(source_el);
+
+                return result_el;
+            }
+
+            function createImage(parent) {
+                console.log("creating image for ", parent.id);
+                const pv_width = parent.getAttribute("pv_width");
+                const pv_height = parent.getAttribute("pv_height");
+                const pv_url = parent.getAttribute("pv_url");
+
+                let result_el = document.createElement("img");
+                result_el.src = pv_url;
+
+                let final_size = calculateSize(pv_width, pv_height);
+                result_el.style.width = final_size[0];
+                result_el.style.height = final_size[1];
+
+                return result_el;
+            }
+
+            function createElement(parent) {
+                if (parent.hasAttribute("pv_video")) {
+                    return createVideo(parent);
+                } else {
+                    return createImage(parent);
+                }
+            }
+
+            function checkScroll() {
+                const elements =
+                    document.getElementsByClassName("image_container");
+                for (var i = 0; i < elements.length; i++) {
+                    const el = elements[i];
+                    const distance = distanceFromOnScreen(el);
+
+                    if (distance < display_threshold) {
+                        // Only add a new node if there aren't any, we don't want to reload the images on screen while scrolling.
+                        if (!el.hasChildNodes()) {
+                            console.debug(
+                                "creating element for ",
+                                el.id,
+                                " distance: ",
+                                distance,
+                            );
+                            el.appendChild(createElement(el));
+                        }
+
+                        if (el.hasAttribute("pv_video")) {
+                            if (distance <= 5) {
+                                // a video tag should "auto play" when it comes on screen
+                                const video_el = el.firstChild;
+                                // Also have our own attribute so if the video is manually paused we don't restart it
+                                const started =
+                                    video_el.getAttribute("pv_started") ||
+                                    "false";
+                                if (video_el.paused && started != "true") {
+                                    console.debug("starting video!");
+                                    video_el.play();
+                                    video_el.setAttribute("pv_started", "true");
+                                }
+                            } else {
+                                // as soon as the video is off screen pause it again.
+                                const video_el = el.firstChild;
+                                if (!video_el.paused) {
+                                    video_el.pause();
+                                    video_el.setAttribute(
+                                        "pv_started",
+                                        "false",
+                                    );
+                                }
+                            }
+                        }
+                    } else {
+                        // off screen
+                        if (el.hasChildNodes) {
+                            el.replaceChildren();
+                        }
                     }
                 }
             }
-        }
 
+            let auto_scroll_enabled = false;
+
+            function auto_scroll() {
+                if (!auto_scroll_enabled) {
+                    return;
+                }
+
+                window.scrollBy(0, 10);
+
+                window.setTimeout(auto_scroll, 100);
+            }
+
+            function toggle_auto_scroll() {
+                auto_scroll_enabled = !auto_scroll_enabled;
+                console.log("toggling auto scroll to", auto_scroll_enabled);
+                if (auto_scroll_enabled) {
+                    auto_scroll();
+                }
+            }
+
+            function body_key_handler(event) {
+                if (event.code == "KeyS") {
+                    toggle_auto_scroll();
+                }
+            }
+        </script>
+    </head>
+    <body onkeydown="body_key_handler">
+        {% for image in images -%}
+
+        <div
+            id="id_div_{{image.url}}"
+            class="image_container"
+            pv_width="{{image.width}}"
+            pv_height="{{image.height}}"
+            pv_url="/img/{{image.url}}"
+            {%
+            if
+            image.is_video
+            %}
+            pv_video="true"
+            {%
+            endif
+            %}
+        ></div>
+        {% endfor -%}
+    </body>
+    <script>
+        // Make sure all the divs are resized to their correct height before we do anything else
+        resizePlaceholderDivs();
+
+        window.addEventListener("scroll", checkScroll, false);
+        window.addEventListener("resize", checkScroll, false);
+        window.addEventListener("keydown", body_key_handler, false);
+        // called now for initial init rather than adding an onload event listener so that it happens correctly on refresh.
+        checkScroll();
     </script>
-</head>
-
-<body>
-    {% for image in images -%}
-
-    <div id="id_div_{{image.url}}" class="image_container" pv_width="{{image.width}}" pv_height="{{image.height}}"
-        pv_url="/img/{{image.url}}" {% if image.is_video %} pv_video="true" {% endif %}></div>
-    {% endfor -%}
-</body>
-<script>
-    // Make sure all the divs are resized to their correct height before we do anything else
-    resizePlaceholderDivs();
-
-    window.addEventListener('scroll', checkScroll, false);
-    window.addEventListener('resize', checkScroll, false);
-
-    // called now for initial init rather than adding an onload event listener so that it happens correctly on refresh.
-    checkScroll();
-
-</script>
-
 </html>

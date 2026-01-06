@@ -12,6 +12,6 @@ pub enum Error {
     #[error("a mp4 processing error {0:?}")]
     Mp4(#[from] mp4::Error),
 
-    #[error("Missing ffprobe")]
+    #[error("an error calling ffprobe")]
     MissingFFProbe,
 }

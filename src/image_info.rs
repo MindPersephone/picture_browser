@@ -114,9 +114,9 @@ fn file_to_image(entry: &DirEntry) -> Result<ImageInfo, Error> {
 
 fn date(metadata: &Metadata) -> Result<SystemTime, Error> {
     metadata
-        .accessed()
+        .modified()
         .or(metadata.created())
-        .or(Ok(metadata.modified()?))
+        .or(Ok(metadata.accessed()?))
 }
 
 fn image_size(filepath: &str) -> Result<(usize, usize), Error> {

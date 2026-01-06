@@ -30,7 +30,7 @@ cargo run -- --randomise path/to/image/folder
 
 If you want to filter to only have particular kinds of files displayed the `--filter` parameter takes `video` `images`
 `gif` or `none` with none, being the default, no filtering. The others will display only the kind of files you selected.
-Note gif files are included in `images`
+Note gif files are included in `images`, we can't tell if a gif is animated or static currently.
 
 ```sh
 cargo run -- --filter gif path/to/image/folder
@@ -40,16 +40,12 @@ Note: This will only bind to local host. This can not and should not be used to 
 could use a proxy or something, but you're on your own. That is not what this was designed for. Don't. Security issues
 related to running this publicly will be ignored.
 
-The background colour of the page defaults to the [css colour "hotpink"](https://htmlcolorcodes.com/color-names/) This
-can be changed with the `--background` or `-b` parameter. Any css compatible colour can be used here. `black`, `#FFFFFF`
-, etc
-
 If something is already using the port 6700 you may need to change the default, that can be done by passing in the
 `--port` or `-p` parameter with a valid port value. Note values under 1024 may need admin privileges, pick something
 between 1025 and 65535. It is beyond the scope of this readme to explain why.
 
 ```sh
-cargo run -- --background #66FF77 -p 6969 path/to/image/folder
+cargo run -- -p 6969 path/to/image/folder
 ```
 
 ## Allowed file types
