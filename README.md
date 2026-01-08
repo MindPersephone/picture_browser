@@ -12,15 +12,15 @@ this will attempt to figure out most video file sizes without needing external p
 
 ## Running
 
-To display all the images in a folder, pass the path to the folder.
+Currently we don't have pre-built releases. You will need a working [rust installation](https://rust-lang.org/tools/install/) and use cargo to build the project from a git clone.
+
+To display all the images in a folder, pass the path to the folder. Note: this will only display the images in the given folder, not any sub folders.
 
 ```sh
 cargo run -- path/to/image/folder
 ```
 
-This will cause the system default web browser to open displaying a page with all the images in the folder. They will be
-ordered in the way that the file system has the images ordered. Known as Inode ordering. This may not be the same as
-they appear in your folder view.
+This will cause the system default web browser to open displaying a page with all the images in the folder. They will be ordered in the way that the file system has the images ordered. Known as Inode ordering. This may not be the same as they appear in your folder view.
 
 If you want to specify the ordering you can by passing one of `--randomise` `--date` or `--alphabetical`
 
@@ -44,8 +44,12 @@ If something is already using the port 6700 you may need to change the default, 
 `--port` or `-p` parameter with a valid port value. Note values under 1024 may need admin privileges, pick something
 between 1025 and 65535. It is beyond the scope of this readme to explain why.
 
+If your images are in multiple sub folders you can use the `--recursive` flag to display images in sub folders as well as the folder provided.
+
+If you do not want the web browser to open automatically use `--no-browser` E.G you want to open the page in a browser that is not the system default.
+
 ```sh
-cargo run -- -p 6969 path/to/image/folder
+cargo run -- -p 6969 --recursive --no-browser path/to/image/folder
 ```
 
 ## Short cut keys
@@ -77,6 +81,8 @@ configuring log levels and so on.
 
 Also note that the index.html page is a single file page. Everything must be in the one file. It *MUST NOT* load any
 files from outside of local host, and even then it should only be loading the images that it has been asked to load.
+
+When working on the html for the page using the `--hot-reload` command line flag will cause the template to be reloaded from disk every time it is requested rather than caching the result of the first run. This will mean you don't need to rebuild the rust code for changes.  
 
 ### Design requirements
 
