@@ -48,6 +48,16 @@ between 1025 and 65535. It is beyond the scope of this readme to explain why.
 cargo run -- -p 6969 path/to/image/folder
 ```
 
+## Short cut keys
+
+There are a couple of short cut keys built into the webpage, they are not easy to find though.
+
+|Key   | Action                                 |
+|------|----------------------------------------|
+|s     | Slowly auto scroll the page downwards  |
+|j     | Jump the page up to the previous image |
+|k     | Jump the page to the next image        |
+
 ## Allowed file types
 
 This does some crude but usually effective file extension matching to decide what files to show in the result. They are
