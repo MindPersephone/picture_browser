@@ -2,6 +2,7 @@
 <html>
     <head>
         <title>Image viewer {{path}}</title>
+
         <style>
             body {
                 background: hotpink;
@@ -252,9 +253,44 @@
                 }
             }
 
+            function onscreen_div() {
+                const elements =
+                    document.getElementsByClassName("image_container");
+                let result = [];
+                for (var i = 0; i < elements.length; i++) {
+                    const el = elements[i];
+                    const distance = distanceFromOnScreen(el);
+                    if (distance == 0) {
+                        return el;
+                    }
+                }
+            }
+
+            function next_image() {
+                const top_div = onscreen_div();
+                const target = top_div.nextElementSibling;
+                if (target) {
+                    target.scrollIntoView(true);
+                }
+            }
+
+            function prev_image() {
+                const top_div = onscreen_div();
+                const target = top_div.previousElementSibling;
+                if (target) {
+                    target.scrollIntoView(true);
+                }
+            }
+
             function body_key_handler(event) {
                 if (event.code == "KeyS") {
                     toggle_auto_scroll();
+                }
+                if (event.code == "KeyK") {
+                    next_image();
+                }
+                if (event.code == "KeyJ") {
+                    prev_image();
                 }
             }
         </script>
