@@ -152,7 +152,12 @@ async fn main() {
     let web_data = web::Data::new(data);
 
     // Bind local so this can't be accessed outside the current machine if not dockerized
-    let bind = if env::var("DOCKERIZED").is_ok() { "0.0.0.0" } else { "127.0.0.1" };
+    let bind = if env::var("DOCKERIZED").is_ok() {
+        warn!("This app is running in dockerized mode and will listen on all interfaces. This can be insecure and this app should not be run publicly in this mode!");
+        "0.0.0.0"
+    } else { 
+        "127.0.0.1"
+    };
 
     let server_builder = HttpServer::new(move || {
         App::new()
