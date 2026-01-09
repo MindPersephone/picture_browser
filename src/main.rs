@@ -1,3 +1,5 @@
+use std::env;
+
 use actix_files::NamedFile;
 use log::{debug, info, warn};
 
@@ -149,6 +151,9 @@ async fn main() {
 
     let web_data = web::Data::new(data);
 
+    // Bind local so this can't be accessed outside the current machine if not dockerized
+    let bind = if env::var("DOCKERIZED").is_ok() { "0.0.0.0" } else { "127.0.0.1" };
+
     let server_builder = HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
@@ -158,7 +163,7 @@ async fn main() {
             .route("/img/{image_name}", web::get().to(image_request))
     })
     .workers(args.workers)
-    .bind(("127.0.0.1", args.port)) // only bind local so this can't be accessed outside the current machine
+    .bind((bind, args.port))
     .unwrap();
 
     let server = server_builder.run();
