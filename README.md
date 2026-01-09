@@ -60,8 +60,8 @@ Keep in mind the security notes above, this project is not intended to host imag
 The default port is `6700` and pictures shoud be mounted read-only to `/pictures` inside the container.  
 
 ```bash
-docker pull ???
-docker run -p 6700:6700 -v /your/pictures/directory:/pictures:ro ???
+docker pull ghcr.io/mindpersephone/picture_browser:main
+docker run -p 6700:6700 -v /your/pictures/directory:/pictures:ro ghcr.io/mindpersephone/picture_browser:main
 ```
 
 You can provide additional command line arguments when running the docker, just note that the directory will need to be specified manually at the end of your replacement arguments.  
