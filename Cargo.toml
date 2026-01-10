@@ -43,3 +43,6 @@ mp4 = "0.14.0"
 
 # figuring out if ffmpeg is installed
 which = "8.0.0"
+
+# generated ids for the files.
+uuid = {version="1.19.0", features=["v4"]}

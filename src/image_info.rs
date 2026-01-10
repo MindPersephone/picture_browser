@@ -14,6 +14,7 @@ use log::warn;
 use mp4::Mp4Reader;
 use serde::Serialize;
 use serde_json::Value;
+use uuid::Uuid;
 use which::which;
 
 use crate::error::Error;
@@ -83,8 +84,12 @@ pub struct ImageInfo {
 fn file_to_image(entry: &DirEntry) -> Result<ImageInfo, Error> {
     let filepath = entry.path().to_str().unwrap().to_string();
     let p = Path::new(&filepath);
-    let url = p.file_name().unwrap().to_str().unwrap().to_string();
+
+    // Generate a uuid with the file extension here so that if we are running in recursive mode
+    // and two folders contain the same file name we don't end up with duplicate entries.
     let extension = p.extension().map(|p| p.to_str().unwrap()).unwrap_or("");
+    let uuid = Uuid::new_v4();
+    let url = format!("{}.{}", uuid, extension);
 
     let metadata = entry.metadata()?;
     let date = date(&metadata)?;
