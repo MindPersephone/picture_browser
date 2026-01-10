@@ -52,6 +52,27 @@ If you do not want the web browser to open automatically use `--no-browser` E.G 
 cargo run -- -p 6969 --recursive --no-browser path/to/image/folder
 ```
 
+## Docker version
+This project is also avilable as a docker container in the event you want to look at photos on a network drive and can run a docker container on that server to avoid permissions issues and network lag.
+
+Keep in mind the security notes above, this project is not intended to host images publicly. Any security issues relating to running this publicly will be ignored.  
+
+The default port is `6700` and pictures shoud be mounted read-only to `/pictures` inside the container.  
+
+```bash
+docker pull ghcr.io/mindpersephone/picture_browser:main
+docker run -p 6700:6700 -v /your/pictures/directory:/pictures:ro ghcr.io/mindpersephone/picture_browser:main
+```
+
+You can provide additional command line arguments when running the docker, note that the directory will need to be specified at the end of your replacement arguments.  
+The default command line arguments for the docker container can be found in [the Dockerfile](Dockerfile#L16).  
+For example, to add the `--randomise` flag run the container as follows:
+
+```
+docker run -p 6700:6700 -v /your/pictures/directory:/pictures:ro ghcr.io/mindpersephone/picture_browser:main --no-browser --recursive --randomise /pictures
+```
+
+
 ## Short cut keys
 
 There are a couple of short cut keys built into the webpage, they are not easy to find though.
@@ -98,3 +119,4 @@ When working on the html for the page using the `--hot-reload` command line flag
 * Install function to add a magic entry to the windows registry to enable on right click menu like vs code or other
 tools
 * Add task bar icons when running in windows like that.
+
