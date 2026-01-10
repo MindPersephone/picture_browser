@@ -1,3 +1,6 @@
+# This workflow is a default GitHub Workflow. Updates to this workflow can be obtained from
+# https://github.com/actions/starter-workflows/blob/main/ci/docker-publish.yml
+
 name: Docker
 
 # This workflow uses actions that are not certified by GitHub.
