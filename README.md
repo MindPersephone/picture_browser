@@ -64,8 +64,13 @@ docker pull ghcr.io/mindpersephone/picture_browser:main
 docker run -p 6700:6700 -v /your/pictures/directory:/pictures:ro ghcr.io/mindpersephone/picture_browser:main
 ```
 
-You can provide additional command line arguments when running the docker, just note that the directory will need to be specified manually at the end of your replacement arguments.  
-The default command line arguments for the docker container can be found in [the Dockerfile](Dockerfile#L16)
+You can provide additional command line arguments when running the docker, note that the directory will need to be specified at the end of your replacement arguments.  
+The default command line arguments for the docker container can be found in [the Dockerfile](Dockerfile#L16).  
+For example, to add the `--randomise` flag run the container as follows:
+
+```
+docker run -p 6700:6700 -v /your/pictures/directory:/pictures:ro ghcr.io/mindpersephone/picture_browser:main --no-browser --recursive --randomise --recursive /pictures
+```
 
 
 ## Short cut keys
