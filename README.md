@@ -69,7 +69,7 @@ The default command line arguments for the docker container can be found in [the
 For example, to add the `--randomise` flag run the container as follows:
 
 ```
-docker run -p 6700:6700 -v /your/pictures/directory:/pictures:ro ghcr.io/mindpersephone/picture_browser:main --no-browser --recursive --randomise --recursive /pictures
+docker run -p 6700:6700 -v /your/pictures/directory:/pictures:ro ghcr.io/mindpersephone/picture_browser:main --no-browser --recursive --randomise /pictures
 ```
 
 
@@ -119,3 +119,4 @@ When working on the html for the page using the `--hot-reload` command line flag
 * Install function to add a magic entry to the windows registry to enable on right click menu like vs code or other
 tools
 * Add task bar icons when running in windows like that.
+
