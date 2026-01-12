@@ -6,7 +6,7 @@ Images will be resized, client side, so they are not taller or wider than the vi
 
 Works well enough for me currently
 
-![A screen shot of picture browser showing two pictures of buildings on a pink background](Screenshot.png)
+![A screen shot of picture browser showing two pictures of buildings on a pink background, images from wikimedia commons](Screenshot.png)
 
 ## Optional dependencies
 
