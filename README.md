@@ -6,6 +6,8 @@ Images will be resized, client side, so they are not taller or wider than the vi
 
 Works well enough for me currently
 
+![A screen shot of picture browser showing two pictures of buildings on a pink background](Screenshot.png)
+
 ## Optional dependencies
 
 this will attempt to figure out most video file sizes without needing external programs. However some do not work, in which cases it will attempt to use ffmpeg to find the size. If it can't find it, a warning message will appear and the size will be set to 0. Which will cause some bouncing when scrolling through the page.
@@ -119,4 +121,3 @@ When working on the html for the page using the `--hot-reload` command line flag
 * Install function to add a magic entry to the windows registry to enable on right click menu like vs code or other
 tools
 * Add task bar icons when running in windows like that.
-
