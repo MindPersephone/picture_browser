@@ -10,7 +10,7 @@ Works well enough for me currently
 
 ## Optional dependencies
 
-this will attempt to figure out most video file sizes without needing external programs. However some do not work, in which cases it will attempt to use ffmpeg to find the size. If it can't find it, a warning message will appear and the size will be set to 0. Which will cause some bouncing when scrolling through the page.
+Picture Browser will attempt to figure out most video file sizes without needing external programs. However it can't figure out all kinds of videos, in which cases it will attempt to use ffmpeg to find the size. If it can't find it, a warning message will appear and the size will be set to 0. Which will cause some bouncing when scrolling through the page.
 
 ## Running
 
@@ -79,11 +79,12 @@ docker run -p 6700:6700 -v /your/pictures/directory:/pictures:ro ghcr.io/mindper
 
 There are a couple of short cut keys built into the webpage, they are not easy to find though.
 
-|Key   | Action                                 |
-|------|----------------------------------------|
-|s     | Slowly auto scroll the page downwards  |
-|j     | Jump the page up to the previous image |
-|k     | Jump the page to the next image        |
+|Key   | Action                                                   |
+|------|----------------------------------------------------------|
+|s     | Slowly auto scroll the page downwards                    |
+|j     | Jump the page up to the previous image                   |
+|k     | Jump the page to the next image                          |
+|r     | Refresh the list of images from disk and reload the page |
 
 ## Allowed file types
 
