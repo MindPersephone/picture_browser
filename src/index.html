@@ -5,7 +5,7 @@
 
         <style>
             body {
-                background: hotpink;
+                background: {{background}};
             }
 
             img {
@@ -282,6 +282,14 @@
                 }
             }
 
+            function refresh() {
+                // Trigger a get request to /refresh then reload the page.
+                // TODO: Add some kind of spinner or similar, this can take a while.
+                fetch("/refresh").then(function (response) {
+                    window.location.reload();
+                });
+            }
+
             function body_key_handler(event) {
                 if (event.code == "KeyS") {
                     toggle_auto_scroll();
@@ -291,6 +299,9 @@
                 }
                 if (event.code == "KeyJ") {
                     prev_image();
+                }
+                if (event.code == "KeyR") {
+                    refresh();
                 }
             }
         </script>

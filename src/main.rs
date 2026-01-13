@@ -1,4 +1,5 @@
 use std::env;
+use std::sync::Mutex;
 
 use actix_files::NamedFile;
 use log::{debug, info, warn};
@@ -12,6 +13,7 @@ use rand::prelude::*;
 use tera::{Context, Tera};
 use tokio::task::JoinSet;
 
+use crate::error::Error;
 use crate::image_info::{find_files, ImageInfo};
 
 pub mod error;
@@ -20,6 +22,9 @@ pub mod image_info;
 struct AppData {
     target_path: String,
     images: Vec<ImageInfo>,
+    sort: SortBy,
+    filter: FilterParameter,
+    recursive: bool,
     templates: Tera,
     background: String,
     hot_reload: bool,
@@ -136,26 +141,32 @@ async fn main() {
         info!("Nothing found to display");
         return;
     }
-
-    let sorted_images = sort(&args, images);
+    let sort_by = SortBy::from_parameters(&args);
+    let sorted_images = sort(&sort_by, &images);
 
     let templates = create_templates("./");
 
     let data = AppData {
         target_path: args.path.clone(),
         images: sorted_images,
+        sort: sort_by,
+        filter: args.filter,
+        recursive: args.recursive,
         templates,
         background: args.background.clone(),
         hot_reload: args.hot_reload.clone(),
     };
 
-    let web_data = web::Data::new(data);
+    let web_data = web::Data::new(Mutex::new(data));
 
     // Bind local so this can't be accessed outside the current machine if not dockerized
     let bind = if env::var("DOCKERIZED").is_ok() {
-        warn!("This app is running in dockerized mode and will listen on all interfaces. This can be insecure and this app should not be run publicly in this mode!");
+        warn!(
+            "This app is running in dockerized mode and will listen on all interfaces.
+            This can be insecure and this app should not be run publicly in this mode!"
+        );
         "0.0.0.0"
-    } else { 
+    } else {
         "127.0.0.1"
     };
 
@@ -165,6 +176,7 @@ async fn main() {
             .app_data(web_data.clone())
             .route("/index.html", web::get().to(index))
             .route("/", web::get().to(index))
+            .route("/refresh", web::get().to(refresh))
             .route("/img/{image_name}", web::get().to(image_request))
     })
     .workers(args.workers)
@@ -189,8 +201,9 @@ async fn main() {
     set.join_next().await;
 }
 
-async fn index(data: web::Data<AppData>) -> impl Responder {
-    HttpResponse::Ok()
+async fn index(data: web::Data<Mutex<AppData>>) -> Result<impl Responder> {
+    let data = data.lock().map_err(|_e| Error::Lock())?;
+    Ok(HttpResponse::Ok()
         .content_type(ContentType::html())
         .body(generate_index(
             &data.templates,
@@ -198,12 +211,12 @@ async fn index(data: web::Data<AppData>) -> impl Responder {
             &data.images,
             &data.background,
             data.hot_reload,
-        ))
+        )))
 }
 
-async fn image_request(data: web::Data<AppData>, req: HttpRequest) -> Result<NamedFile> {
+async fn image_request(data: web::Data<Mutex<AppData>>, req: HttpRequest) -> Result<NamedFile> {
     let path = req.match_info().query("image_name");
-
+    let data = data.lock().map_err(|_e| Error::Lock())?;
     for img in data.images.iter() {
         if img.url.as_str() == path {
             return Ok(NamedFile::open(&img.source)?);
@@ -212,17 +225,54 @@ async fn image_request(data: web::Data<AppData>, req: HttpRequest) -> Result<Nam
     panic!("not found {}", path);
 }
 
-fn sort(args: &Parameters, input: Vec<ImageInfo>) -> Vec<ImageInfo> {
+async fn refresh(data: web::Data<Mutex<AppData>>) -> Result<()> {
+    let mut data = data.lock().map_err(|_e| Error::Lock())?;
+
+    info!("Refreshing images from disk");
+    let images: Vec<ImageInfo> = find_files(&data.target_path, data.filter, data.recursive);
+    info!("Found {} files", images.len());
+    if images.is_empty() {
+        info!("Nothing found to display");
+    }
+
+    data.images = sort(&data.sort, &images);
+
+    Ok(())
+}
+
+fn sort(by: &SortBy, input: &Vec<ImageInfo>) -> Vec<ImageInfo> {
     let mut result = input.clone();
-    if args.alphabetical {
-        result.sort_by(|a, b| a.url.cmp(&b.url));
-    } else if args.date {
-        result.sort_by(|a, b| b.date.cmp(&a.date));
-    } else if args.randomise {
-        let mut rng = rand::rng();
-        result.shuffle(&mut rng);
+    match by {
+        SortBy::Alphabetical => result.sort_by(|a, b| a.source.cmp(&b.source)),
+        SortBy::Date => result.sort_by(|a, b| b.date.cmp(&a.date)),
+        SortBy::Randomise => {
+            let mut rng = rand::rng();
+            result.shuffle(&mut rng);
+        }
+        SortBy::None => {}
     }
     result
+}
+#[derive(PartialEq)]
+enum SortBy {
+    Alphabetical,
+    Date,
+    Randomise,
+    None,
+}
+
+impl SortBy {
+    pub fn from_parameters(args: &Parameters) -> Self {
+        if args.alphabetical {
+            SortBy::Alphabetical
+        } else if args.date {
+            SortBy::Date
+        } else if args.randomise {
+            SortBy::Randomise
+        } else {
+            SortBy::None
+        }
+    }
 }
 
 fn create_templates(path: &str) -> Tera {
