@@ -1,5 +1,5 @@
 use std::env;
-use std::sync::Mutex;
+use std::sync::RwLock;
 
 use actix_files::NamedFile;
 use log::{debug, info, warn};
@@ -157,7 +157,7 @@ async fn main() {
         hot_reload: args.hot_reload.clone(),
     };
 
-    let web_data = web::Data::new(Mutex::new(data));
+    let web_data = web::Data::new(RwLock::new(data));
 
     // Bind local so this can't be accessed outside the current machine if not dockerized
     let bind = if env::var("DOCKERIZED").is_ok() {
@@ -201,8 +201,8 @@ async fn main() {
     set.join_next().await;
 }
 
-async fn index(data: web::Data<Mutex<AppData>>) -> Result<impl Responder> {
-    let data = data.lock().map_err(|_e| Error::Lock())?;
+async fn index(data: web::Data<RwLock<AppData>>) -> Result<impl Responder> {
+    let data = data.read().map_err(|_e| Error::Lock())?;
     Ok(HttpResponse::Ok()
         .content_type(ContentType::html())
         .body(generate_index(
@@ -214,9 +214,9 @@ async fn index(data: web::Data<Mutex<AppData>>) -> Result<impl Responder> {
         )))
 }
 
-async fn image_request(data: web::Data<Mutex<AppData>>, req: HttpRequest) -> Result<NamedFile> {
+async fn image_request(data: web::Data<RwLock<AppData>>, req: HttpRequest) -> Result<NamedFile> {
     let path = req.match_info().query("image_name");
-    let data = data.lock().map_err(|_e| Error::Lock())?;
+    let data = data.read().map_err(|_e| Error::Lock())?;
     for img in data.images.iter() {
         if img.url.as_str() == path {
             return Ok(NamedFile::open(&img.source)?);
@@ -225,8 +225,8 @@ async fn image_request(data: web::Data<Mutex<AppData>>, req: HttpRequest) -> Res
     panic!("not found {}", path);
 }
 
-async fn refresh(data: web::Data<Mutex<AppData>>) -> Result<()> {
-    let mut data = data.lock().map_err(|_e| Error::Lock())?;
+async fn refresh(data: web::Data<RwLock<AppData>>) -> Result<()> {
+    let mut data = data.write().map_err(|_e| Error::Lock())?;
 
     info!("Refreshing images from disk");
     let images: Vec<ImageInfo> = find_files(&data.target_path, data.filter, data.recursive);
