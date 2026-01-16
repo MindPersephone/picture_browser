@@ -2,6 +2,7 @@ use std::env;
 use std::sync::RwLock;
 
 use actix_files::NamedFile;
+use actix_web::body::BoxBody;
 use log::{debug, info, warn};
 
 use actix_web::http::header::ContentType;
@@ -176,6 +177,7 @@ async fn main() {
             .app_data(web_data.clone())
             .route("/index.html", web::get().to(index))
             .route("/", web::get().to(index))
+            .route("/favicon.ico", web::get().to(favicon))
             .route("/refresh", web::get().to(refresh))
             .route("/img/{image_name}", web::get().to(image_request))
     })
@@ -238,6 +240,13 @@ async fn refresh(data: web::Data<RwLock<AppData>>) -> Result<()> {
     data.images = sort(&data.sort, &images);
 
     Ok(())
+}
+
+async fn favicon() -> Result<impl Responder> {
+    let icon_bytes = include_bytes!("../icon.png");
+    Ok(HttpResponse::Ok()
+        .content_type(ContentType::png())
+        .body(BoxBody::new(icon_bytes.as_slice())))
 }
 
 fn sort(by: &SortBy, input: &Vec<ImageInfo>) -> Vec<ImageInfo> {
