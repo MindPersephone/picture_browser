@@ -16,13 +16,16 @@ use tokio::task::JoinSet;
 
 use crate::error::Error;
 use crate::image_info::{find_files, ImageInfo};
+use crate::tree::{TreeNode, TreeNodeLayer};
 
 pub mod error;
 pub mod image_info;
+pub mod tree;
 
 struct AppData {
     target_path: String,
     images: Vec<ImageInfo>,
+    tree: TreeNode,
     sort: SortBy,
     filter: FilterParameter,
     recursive: bool,
@@ -145,11 +148,15 @@ async fn main() {
     let sort_by = SortBy::from_parameters(&args);
     let sorted_images = sort(&sort_by, &images);
 
+    // Should only be able to return none if the list is empty, and we've already short circuited if images is empty.
+    let tree_root = tree::TreeNode::tree_from_images(&sorted_images).unwrap();
+
     let templates = create_templates("./");
 
     let data = AppData {
         target_path: args.path.clone(),
         images: sorted_images,
+        tree: tree_root,
         sort: sort_by,
         filter: args.filter,
         recursive: args.recursive,
@@ -179,6 +186,7 @@ async fn main() {
             .route("/", web::get().to(index))
             .route("/favicon.ico", web::get().to(favicon))
             .route("/refresh", web::get().to(refresh))
+            .route("/tree/{tree_path}", web::get().to(tree_path))
             .route("/img/{image_name}", web::get().to(image_request))
     })
     .workers(args.workers)
@@ -242,6 +250,13 @@ async fn refresh(data: web::Data<RwLock<AppData>>) -> Result<()> {
     Ok(())
 }
 
+async fn tree_path(data: web::Data<RwLock<AppData>>, req: HttpRequest) -> Result<HttpResponse> {
+    let path = req.match_info().query("image_name");
+    let data = data.read().map_err(|_e| Error::Lock())?;
+
+    Ok(HttpResponse::Ok().json(TreeNodeLayer::from(data.tree.path(path)?)))
+}
+
 async fn favicon() -> Result<impl Responder> {
     let icon_bytes = include_bytes!("../icon.png");
     Ok(HttpResponse::Ok()
@@ -260,8 +275,24 @@ fn sort(by: &SortBy, input: &Vec<ImageInfo>) -> Vec<ImageInfo> {
         }
         SortBy::None => {}
     }
+
+    // Re-calculate the height before and after fields.
+    let mut running_total: u64 = 0;
+    for e in result.iter_mut() {
+        e.height_before = running_total;
+        running_total += e.height + IMAGE_OFFSET;
+    }
+
+    let total = running_total;
+    running_total = 0;
+    for e in result.iter_mut() {
+        running_total += e.height + IMAGE_OFFSET;
+        e.height_after = total - running_total;
+    }
+
     result
 }
+
 #[derive(PartialEq)]
 enum SortBy {
     Alphabetical,
@@ -292,6 +323,7 @@ fn create_templates(path: &str) -> Tera {
             panic!("Could not parse custom template. Aborting");
         }
     };
+
     tera.autoescape_on(vec![]);
 
     // look and see if we have a custom index.html file loaded from init.
@@ -321,9 +353,10 @@ fn generate_index(
     hot_reload: bool,
 ) -> String {
     let mut context = Context::new();
-    context.insert("images", &images);
+    context.insert("images", images);
     context.insert("path", target_path);
     context.insert("background", background);
+    context.insert("image_offset", &IMAGE_OFFSET);
 
     if !hot_reload {
         templates.render("index.html", &context).unwrap()
@@ -334,3 +367,4 @@ fn generate_index(
 }
 
 const DEFAULT_INDEX: &str = include_str!("./index.html");
+const IMAGE_OFFSET: u64 = 15;
