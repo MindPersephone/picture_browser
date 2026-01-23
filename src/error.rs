@@ -18,6 +18,9 @@ pub enum Error {
 
     #[error("an error calling ffprobe")]
     MissingFFProbe,
+
+    #[error("invalid path: {0}")]
+    InvalidPath(String),
 }
 
 impl actix_web::ResponseError for Error {

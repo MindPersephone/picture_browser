@@ -77,8 +77,10 @@ pub struct ImageInfo {
     pub source: String,
     pub date: SystemTime,
     pub is_video: bool,
-    pub width: usize,
-    pub height: usize,
+    pub width: u64,
+    pub height: u64,
+    pub height_before: u64,
+    pub height_after: u64,
 }
 
 fn file_to_image(entry: &DirEntry) -> Result<ImageInfo, Error> {
@@ -114,6 +116,8 @@ fn file_to_image(entry: &DirEntry) -> Result<ImageInfo, Error> {
         is_video,
         width,
         height,
+        height_before: 0,
+        height_after: 0,
     })
 }
 
@@ -124,12 +128,12 @@ fn date(metadata: &Metadata) -> Result<SystemTime, Error> {
         .or(Ok(metadata.accessed()?))
 }
 
-fn image_size(filepath: &str) -> Result<(usize, usize), Error> {
+fn image_size(filepath: &str) -> Result<(u64, u64), Error> {
     let result = size(filepath)?;
-    Ok((result.width, result.height))
+    Ok((result.width as u64, result.height as u64))
 }
 
-fn mp4_size(filepath: &str) -> Result<(usize, usize), Error> {
+fn mp4_size(filepath: &str) -> Result<(u64, u64), Error> {
     let f = File::open(filepath)?;
     let size = f.metadata()?.len();
     let reader = BufReader::new(f);
@@ -154,10 +158,10 @@ fn mp4_size(filepath: &str) -> Result<(usize, usize), Error> {
         result_height = result_height.max(track.height());
     }
 
-    Ok((result_width as usize, result_height as usize))
+    Ok((result_width as u64, result_height as u64))
 }
 
-fn try_ffmpeg(filepath: &str) -> Result<(usize, usize), Error> {
+fn try_ffmpeg(filepath: &str) -> Result<(u64, u64), Error> {
     let which_result = which("ffprobe");
     if let Err(err) = which_result {
         warn!(
@@ -182,14 +186,14 @@ fn try_ffmpeg(filepath: &str) -> Result<(usize, usize), Error> {
 
     let json_result: Value = serde_json::from_slice(&output.stdout)?;
 
-    let mut width: usize = 0;
-    let mut height: usize = 0;
+    let mut width: u64 = 0;
+    let mut height: u64 = 0;
 
     for stream in json_result["streams"].as_array().unwrap() {
         let stream_object = stream.as_object().unwrap();
         if stream_object.contains_key("width") && stream_object.contains_key("height") {
-            width = width.max(stream_object.get("width").unwrap().as_u64().unwrap() as usize);
-            height = height.max(stream_object.get("height").unwrap().as_u64().unwrap() as usize);
+            width = width.max(stream_object.get("width").unwrap().as_u64().unwrap());
+            height = height.max(stream_object.get("height").unwrap().as_u64().unwrap());
         }
     }
 
