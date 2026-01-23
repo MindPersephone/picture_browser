@@ -28,7 +28,7 @@
             }
         </style>
         <script>
-            const imageOffset = 15;
+            const imageOffset = {{image_offset}};
             const display_threshold = 300;
 
             function calculateSize(width, height) {
@@ -294,10 +294,10 @@
                 if (event.code == "KeyS") {
                     toggle_auto_scroll();
                 }
-                if (event.code == "KeyK") {
+                if (event.code == "KeyK" || event.code == "KeyA") {
                     next_image();
                 }
-                if (event.code == "KeyJ") {
+                if (event.code == "KeyJ" || event.code == "KeyQ") {
                     prev_image();
                 }
                 if (event.code == "KeyR") {

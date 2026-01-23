@@ -83,7 +83,9 @@ There are a couple of short cut keys built into the webpage, they are not easy t
 |------|----------------------------------------------------------|
 |s     | Slowly auto scroll the page downwards                    |
 |j     | Jump the page up to the previous image                   |
+|q     | Jump the page up to the previous image                   |
 |k     | Jump the page to the next image                          |
+|a     | Jump the page to the next image                          |
 |r     | Refresh the list of images from disk and reload the page |
 
 ## Allowed file types
@@ -122,3 +124,8 @@ When working on the html for the page using the `--hot-reload` command line flag
 * Install function to add a magic entry to the windows registry to enable on right click menu like vs code or other
 tools
 * Add task bar icons when running in windows like that.
+
+## Further refinements of the html
+
+* Paging endpoint of image chunks so that the html template doesn't need to contain everything.
+  * Reduce the number of elements by grouping up offscreen divs by their height so scrolling still works right.
