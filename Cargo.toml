@@ -10,7 +10,7 @@ edition = "2021"
 clap = { version = "4.5", features = ["derive"] }
 
 # Template engine
-tera = { version = "1.16.1", default-features = false }
+tera = { version = "1.20.1", default-features = false }
 
 # serialisation (Template engine needs objects to be serialisable)
 serde = { version = "1.0", features = ["derive"] }
@@ -24,10 +24,10 @@ actix-files = "0.6.2"
 env_logger = "^0.11"
 log = "0.4"
 # Starting a web browser automatically
-webbrowser = "^1.0"
+webbrowser = "^1.0.6"
 
 # Workers and async engine
-tokio = "1.25"
+tokio = "1.49"
 
 # Randomised sorting
 rand = "^0.9"
@@ -45,4 +45,4 @@ mp4 = "0.14.0"
 which = "8.0.0"
 
 # generated ids for the files.
-uuid = {version="1.19.0", features=["v4"]}
+uuid = {version="1.20.0", features=["v4"]}
