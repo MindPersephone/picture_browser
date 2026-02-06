@@ -1,9 +1,10 @@
 use std::env;
+use std::path::Path;
 use std::sync::RwLock;
 
 use actix_files::NamedFile;
 use actix_web::body::BoxBody;
-use log::{debug, info, warn};
+use log::{info, warn};
 
 use actix_web::http::header::ContentType;
 use actix_web::middleware::Logger;
@@ -316,30 +317,21 @@ impl SortBy {
 }
 
 fn create_templates(path: &str) -> Tera {
-    let mut tera = match Tera::new(format!("{}*.html", path).as_str()) {
-        Ok(t) => t,
-        Err(e) => {
+    let mut tera = Tera::default();
+    tera.autoescape_on(vec![]);
+
+    let index_file_path = Path::new(path).join("index.html");
+    if index_file_path.exists() {
+        if let Err(e) = tera.add_template_file(index_file_path, Some("index.html")) {
             warn!("Parsing error(s): {}", e);
             panic!("Could not parse custom template. Aborting");
         }
-    };
-
-    tera.autoescape_on(vec![]);
-
-    // look and see if we have a custom index.html file loaded from init.
-    // if we don't we can load in a default later.
-    let mut index = false;
-    debug!("found templates: ");
-    for name in tera.get_template_names() {
-        debug!("{}", name);
-        if name == "index.html" {
-            index = true;
-        }
-    }
-
-    if !index {
+    } else {
         info!("No custom index.html found in the current directory so using default template");
-        tera.add_raw_template("index.html", DEFAULT_INDEX).unwrap();
+        if let Err(e) = tera.add_raw_template("index.html", DEFAULT_INDEX) {
+            warn!("Parsing error(s): {}", e);
+            panic!("Could not parse built in template. Aborting");
+        }
     }
 
     tera
