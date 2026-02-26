@@ -81,12 +81,19 @@ There are a couple of short cut keys built into the webpage, they are not easy t
 
 |Key   | Action                                                   |
 |------|----------------------------------------------------------|
-|s     | Slowly auto scroll the page downwards                    |
+|s     | Toggle the auto scroll rate. See section below.          |
+|d     | Stop auto scrolling                                      |
 |j     | Jump the page up to the previous image                   |
 |q     | Jump the page up to the previous image                   |
 |k     | Jump the page to the next image                          |
 |a     | Jump the page to the next image                          |
 |r     | Refresh the list of images from disk and reload the page |
+
+### Auto scrolling
+
+Pressing the 's' key on the keyboard will enable auto scrolling. This will show each image for a set period of time before moving on to the next, in the same way the "Jump the page to the next image" buttons work. The first time you press the key it will set the time to 5 seconds. Each time you press it, the time between images will decrease by half a second. 5 seconds, 4.5 seconds, 4 seconds, and so on. When you toggle it to 0 it will stop auto scrolling until you press the key again.
+
+If you want to top auto scrolling press the 'd' key at any time. 
 
 ## Allowed file types
 

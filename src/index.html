@@ -26,6 +26,24 @@
                 margin-right: 0px;
                 margin-top: 5px;
             }
+
+            .scroll_notify {
+                display:block;
+                position:fixed;
+                top:0;
+                width:120px;
+                height:30px;
+
+
+                margin:10px;
+                padding:10px;
+
+                font-size: 20px;
+                color: black;
+                background-color: white;
+                border: 1px;
+                border-radius: 5px;
+            }
         </style>
         <script>
             const imageOffset = {{image_offset}};
@@ -233,23 +251,73 @@
                 }
             }
 
-            let auto_scroll_enabled = false;
+            let auto_scroll_speed = 0;
+            let auto_scroll_timout_code = 0;
+            let auto_scroll_notify_timeout_code = 0;
 
             function auto_scroll() {
-                if (!auto_scroll_enabled) {
+                console.log("auto_scrolling")
+                if (auto_scroll_speed==0) {
+                    auto_scroll_timout_code = 0;
                     return;
                 }
 
-                window.scrollBy(0, 10);
+                next_image();
 
-                window.setTimeout(auto_scroll, 100);
+                auto_scroll_timout_code = window.setTimeout(auto_scroll, auto_scroll_speed);
             }
 
             function toggle_auto_scroll() {
-                auto_scroll_enabled = !auto_scroll_enabled;
-                console.log("toggling auto scroll to", auto_scroll_enabled);
-                if (auto_scroll_enabled) {
-                    auto_scroll();
+                if (auto_scroll_speed == 0) {
+                    auto_scroll_speed = 5000;
+                } else {
+                    auto_scroll_speed = auto_scroll_speed - 500;
+                }
+
+                console.log("toggling auto scroll to", auto_scroll_speed);
+
+                const existing_els = document.getElementsByClassName("scroll_notify");
+                for (var i = 0; i < existing_els.length; i++) {
+                    const el = existing_els[i];
+                    el.remove();
+                }
+
+                const new_el = document.createElement("div");
+                new_el.setAttribute("class", "scroll_notify");
+                if (auto_scroll_speed > 0) {
+                  new_el.innerText = "Scroll: " + auto_scroll_speed / 1000 + "s";
+                } else {
+                  new_el.innerText = "Scroll off";
+                }
+
+                document.body.insertBefore(new_el, document.body.firstChild);
+
+                if (auto_scroll_notify_timeout_code != 0) {
+                  window.clearTimeout(auto_scroll_notify_timeout_code);
+                }
+
+                auto_scroll_notify_timeout_code = window.setTimeout(function() {
+                  const existing_els = document.getElementsByClassName("scroll_notify");
+                  for (var i = 0; i < existing_els.length; i++) {
+                      const el = existing_els[i];
+                      el.remove();
+                  }
+                  auto_scroll_notify_timeout_code = 0;
+                }, 5000);
+
+                // reset the timeout so we wait the new amount of time.
+                if (auto_scroll_timout_code != 0) {
+                    window.clearTimeout(auto_scroll_timout_code);
+                }
+
+                auto_scroll_timout_code = window.setTimeout(auto_scroll, auto_scroll_speed);
+            }
+
+            function stop_auto_scroll() {
+                auto_scroll_speed = 0;
+                // disable auto scroll call back if enabled.
+                if (auto_scroll_timout_code != 0) {
+                    window.clearTimeout(auto_scroll_timout_code);
                 }
             }
 
@@ -293,6 +361,9 @@
             function body_key_handler(event) {
                 if (event.code == "KeyS") {
                     toggle_auto_scroll();
+                }
+                if (event.code == "KeyD") {
+                    stop_auto_scroll();
                 }
                 if (event.code == "KeyK" || event.code == "KeyA") {
                     next_image();
