@@ -267,6 +267,31 @@
                 auto_scroll_timout_code = window.setTimeout(auto_scroll, auto_scroll_speed);
             }
 
+            function clear_popup_message() {
+              const existing_els = document.getElementsByClassName("scroll_notify");
+              for (var i = 0; i < existing_els.length; i++) {
+                  const el = existing_els[i];
+                  el.remove();
+              }
+              if (auto_scroll_notify_timeout_code != 0) {
+                window.clearTimeout(auto_scroll_notify_timeout_code);
+                auto_scroll_notify_timeout_code = 0;
+              }
+            }
+
+            function display_popup_message(message) {
+
+              clear_popup_message();
+
+              const new_el = document.createElement("div");
+              new_el.setAttribute("class", "scroll_notify");
+              new_el.innerText = message;
+
+              document.body.insertBefore(new_el, document.body.firstChild);
+
+              auto_scroll_notify_timeout_code = window.setTimeout(clear_popup_message, 5000);
+            }
+
             function toggle_auto_scroll() {
                 if (auto_scroll_speed == 0) {
                     auto_scroll_speed = 5000;
@@ -276,34 +301,11 @@
 
                 console.log("toggling auto scroll to", auto_scroll_speed);
 
-                const existing_els = document.getElementsByClassName("scroll_notify");
-                for (var i = 0; i < existing_els.length; i++) {
-                    const el = existing_els[i];
-                    el.remove();
-                }
-
-                const new_el = document.createElement("div");
-                new_el.setAttribute("class", "scroll_notify");
                 if (auto_scroll_speed > 0) {
-                  new_el.innerText = "Scroll: " + auto_scroll_speed / 1000 + "s";
+                  display_popup_message("Scroll: " + auto_scroll_speed / 1000 + "s");
                 } else {
-                  new_el.innerText = "Scroll off";
+                  display_popup_message("Scroll off");
                 }
-
-                document.body.insertBefore(new_el, document.body.firstChild);
-
-                if (auto_scroll_notify_timeout_code != 0) {
-                  window.clearTimeout(auto_scroll_notify_timeout_code);
-                }
-
-                auto_scroll_notify_timeout_code = window.setTimeout(function() {
-                  const existing_els = document.getElementsByClassName("scroll_notify");
-                  for (var i = 0; i < existing_els.length; i++) {
-                      const el = existing_els[i];
-                      el.remove();
-                  }
-                  auto_scroll_notify_timeout_code = 0;
-                }, 5000);
 
                 // reset the timeout so we wait the new amount of time.
                 if (auto_scroll_timout_code != 0) {
@@ -318,6 +320,7 @@
                 // disable auto scroll call back if enabled.
                 if (auto_scroll_timout_code != 0) {
                     window.clearTimeout(auto_scroll_timout_code);
+                    display_popup_message("Scroll off");
                 }
             }
 
