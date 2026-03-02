@@ -47,7 +47,7 @@
         </style>
         <script>
             const imageOffset = {{image_offset}};
-            const display_threshold = 300;
+            const display_threshold = 900;
 
             function calculateSize(width, height) {
                 // This gets called for divs, video, and image tags, we need to worry about the width for video and image
@@ -122,6 +122,10 @@
                         the_div.getAttribute("pv_height"),
                     );
                     the_div.style.height = resultSize[1];
+                }
+
+                if (the_div.hasAttribute("pv_video")) {
+                  the_div.classList.add("video_container")
                 }
             }
 
@@ -198,57 +202,88 @@
                 }
             }
 
-            function checkScroll() {
-                const elements =
-                    document.getElementsByClassName("image_container");
-                for (var i = 0; i < elements.length; i++) {
-                    const el = elements[i];
-                    const distance = distanceFromOnScreen(el);
+            let imageLoadObserver = null;
+            let videoPlayObserver = null;
 
-                    if (distance < display_threshold) {
-                        // Only add a new node if there aren't any, we don't want to reload the images on screen while scrolling.
-                        if (!el.hasChildNodes()) {
-                            console.debug(
-                                "creating element for ",
-                                el.id,
-                                " distance: ",
-                                distance,
-                            );
-                            el.appendChild(createElement(el));
-                        }
+            function observerCallback(entries) {
+              entries.forEach((entry) => {
+                let el = entry.target;
+                if (entry.intersectionRatio == 0) {
+                  if (el.hasChildNodes) {
+                      el.replaceChildren();
+                      el.classList.remove("with_image");
+                  }
 
-                        if (el.hasAttribute("pv_video")) {
-                            if (distance <= 5) {
-                                // a video tag should "auto play" when it comes on screen
-                                const video_el = el.firstChild;
-                                // Also have our own attribute so if the video is manually paused we don't restart it
-                                const started =
-                                    video_el.getAttribute("pv_started") ||
-                                    "false";
-                                if (video_el.paused && started != "true") {
-                                    console.debug("starting video!");
-                                    video_el.play();
-                                    video_el.setAttribute("pv_started", "true");
-                                }
-                            } else {
-                                // as soon as the video is off screen pause it again.
-                                const video_el = el.firstChild;
-                                if (!video_el.paused) {
-                                    video_el.pause();
-                                    video_el.setAttribute(
-                                        "pv_started",
-                                        "false",
-                                    );
-                                }
-                            }
-                        }
-                    } else {
-                        // off screen
-                        if (el.hasChildNodes) {
-                            el.replaceChildren();
-                        }
+
+                } else {
+                    if (!el.hasChildNodes()) {
+                        console.debug(
+                            "creating element for ",
+                            el.id,
+                        );
+                        el.appendChild(createElement(el));
+                        el.classList.add("with_image");
                     }
                 }
+              })
+            }
+
+            function videoPlayCallback(entries) {
+              entries.forEach((entry) => {
+                const el = entry.target;
+                const video_el = el.firstChild;
+                // scrolled on screen before it finished loading?
+                if (video_el) {
+                  if (entry.intersectionRatio == 0) {
+                    if (!video_el.paused) {
+                        video_el.pause();
+                        video_el.setAttribute(
+                            "pv_started",
+                            "false",
+                        );
+                    }
+                  } else {
+                    const started =
+                        video_el.getAttribute("pv_started") ||
+                        "false";
+                    if (video_el.paused && started != "true") {
+                        console.debug("starting video!");
+                        video_el.play();
+                        video_el.setAttribute("pv_started", "true");
+                    }
+                  }
+                }
+              });
+            }
+
+            function setupObservers() {
+              const imageLoadOptions = {
+                root: null,
+                rootMargin: display_threshold + "px",
+                threshold: 0,
+              }
+              imageLoadObserver = new IntersectionObserver(observerCallback, imageLoadOptions);
+
+              const imageElements =
+                  document.getElementsByClassName("image_container");
+              for (var i = 0; i < imageElements.length; i++) {
+                  const el = imageElements[i];
+                  imageLoadObserver.observe(el);
+              }
+
+              const videoPlayOptions = {
+                root: null,
+                rootMargin: "0px",
+                threshold: 0.05,
+              }
+              videoPlayObserver = new IntersectionObserver(videoPlayCallback, videoPlayOptions);
+
+              const videoElements =
+                  document.getElementsByClassName("video_container");
+              for (var i = 0; i < videoElements.length; i++) {
+                  const el = videoElements[i];
+                  videoPlayObserver.observe(el);
+              }
             }
 
             let auto_scroll_speed = 0;
@@ -311,7 +346,6 @@
                 if (auto_scroll_timout_code != 0) {
                     window.clearTimeout(auto_scroll_timout_code);
                 }
-
                 auto_scroll_timout_code = window.setTimeout(auto_scroll, auto_scroll_speed);
             }
 
@@ -321,12 +355,13 @@
                 if (auto_scroll_timout_code != 0) {
                     window.clearTimeout(auto_scroll_timout_code);
                     display_popup_message("Scroll off");
+                    auto_scroll_timout_code = 0;
                 }
             }
 
             function onscreen_div() {
                 const elements =
-                    document.getElementsByClassName("image_container");
+                    document.getElementsByClassName("with_image");
                 let result = [];
                 for (var i = 0; i < elements.length; i++) {
                     const el = elements[i];
@@ -404,8 +439,8 @@
         // Make sure all the divs are resized to their correct height before we do anything else
         resizePlaceholderDivs();
 
-        window.addEventListener("scroll", checkScroll, false);
-        window.addEventListener("resize", checkScroll, false);
+        setupObservers();
+
         window.addEventListener("keydown", body_key_handler, false);
         // called now for initial init rather than adding an onload event listener so that it happens correctly on refresh.
         checkScroll();

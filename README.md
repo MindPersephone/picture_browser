@@ -95,6 +95,10 @@ Pressing the 's' key on the keyboard will enable auto scrolling. This will show 
 
 If you want to top auto scrolling press the 'd' key at any time. 
 
+## Autoplaying video
+
+Thanks to the ad industry most web browsers don't allow javascript to auto play video with out user interaction. Picture browser does have code to enable auto playing of videos as they scroll on screen, however you will probably have to enable the setting for the page. In firefox there is a permissions button in the url bar.
+
 ## Allowed file types
 
 This does some crude but usually effective file extension matching to decide what files to show in the result. They are
