@@ -24,7 +24,7 @@ cargo run -- path/to/image/folder
 
 This will cause the system default web browser to open displaying a page with all the images in the folder. They will be ordered in the way that the file system has the images ordered. Known as Inode ordering. This may not be the same as they appear in your folder view.
 
-If you want to specify the ordering you can by passing one of `--randomise` `--date` or `--alphabetical`
+If you want to specify the ordering you can by passing one of `--randomise` `--newest-first` `--oldest-first` or `--alphabetical`
 
 ```sh
 cargo run -- --randomise path/to/image/folder

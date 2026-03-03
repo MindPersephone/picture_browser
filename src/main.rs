@@ -49,7 +49,7 @@ struct Parameters {
     #[arg(
         long,
         default_value_t = false,
-        conflicts_with_all=["date", "alphabetical"],
+        conflicts_with_all=["newest_first", "oldest_first", "alphabetical"],
         help="randomise the order of the images",
     )]
     pub randomise: bool,
@@ -57,16 +57,25 @@ struct Parameters {
     #[arg(
         long,
         default_value_t = false,
-        conflicts_with_all=["randomise", "alphabetical"],
-        help="sort by the order of the images by date",
+        conflicts_with_all=["randomise", "alphabetical", "oldest_first"],
+        help="sort the images by date, newest first",
+        alias="date",
     )]
-    pub date: bool,
+    pub newest_first: bool,
 
     #[arg(
         long,
         default_value_t = false,
-        conflicts_with_all=["date", "randomise"],
-        help="sort by the order of the images by name",
+        conflicts_with_all=["randomise", "alphabetical", "newest_first"],
+        help="sort the images by date, oldest first",
+    )]
+    pub oldest_first: bool,
+
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with_all=["newest_first", "oldest_first", "randomise"],
+        help="sort the images by name A-Z",
     )]
     pub alphabetical: bool,
 
@@ -205,8 +214,6 @@ async fn main() {
     }
 
     // the server must be awaited otherwise it will not actually do anything.
-    // we also want a time out so here we need to await both of them and return
-    // when the first one exits.
     let mut set = JoinSet::new();
     set.spawn(server);
     set.join_next().await;
@@ -225,12 +232,16 @@ async fn index(data: web::Data<RwLock<AppData>>) -> Result<impl Responder> {
         )))
 }
 
-async fn image_request(data: web::Data<RwLock<AppData>>, req: HttpRequest) -> Result<NamedFile> {
+async fn image_request(
+    data: web::Data<RwLock<AppData>>,
+    req: HttpRequest,
+) -> Result<impl Responder> {
     let path = req.match_info().query("image_name");
     let data = data.read().map_err(|_e| Error::Lock())?;
     for img in data.images.iter() {
         if img.url.as_str() == path {
-            return Ok(NamedFile::open(&img.source)?);
+            let named_file = NamedFile::open(&img.source)?;
+            return Ok(named_file.into_response(&req));
         }
     }
     panic!("not found {}", path);
@@ -269,11 +280,13 @@ fn sort(by: &SortBy, input: &Vec<ImageInfo>) -> Vec<ImageInfo> {
     let mut result = input.clone();
     match by {
         SortBy::Alphabetical => result.sort_by(|a, b| a.source.cmp(&b.source)),
-        SortBy::Date => result.sort_by(|a, b| b.date.cmp(&a.date)),
+        SortBy::DateNewestFirst => result.sort_by(|a, b| b.date.cmp(&a.date)),
+        SortBy::DateOldestFirst => result.sort_by(|a, b| a.date.cmp(&b.date)),
         SortBy::Randomise => {
             let mut rng = rand::rng();
             result.shuffle(&mut rng);
         }
+
         SortBy::None => {}
     }
 
@@ -297,7 +310,8 @@ fn sort(by: &SortBy, input: &Vec<ImageInfo>) -> Vec<ImageInfo> {
 #[derive(PartialEq)]
 enum SortBy {
     Alphabetical,
-    Date,
+    DateNewestFirst,
+    DateOldestFirst,
     Randomise,
     None,
 }
@@ -306,10 +320,12 @@ impl SortBy {
     pub fn from_parameters(args: &Parameters) -> Self {
         if args.alphabetical {
             SortBy::Alphabetical
-        } else if args.date {
-            SortBy::Date
+        } else if args.newest_first {
+            SortBy::DateNewestFirst
         } else if args.randomise {
             SortBy::Randomise
+        } else if args.oldest_first {
+            SortBy::DateOldestFirst
         } else {
             SortBy::None
         }
