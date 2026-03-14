@@ -360,7 +360,7 @@
       }
     }
 
-    function onscreen_div() {
+    function onScreenDiv() {
       const elements =
         document.getElementsByClassName("with_image");
       let result = [];
@@ -374,7 +374,7 @@
     }
 
     function nextImage() {
-      const topDiv = onscreen_div();
+      const topDiv = onScreenDiv();
       const target = topDiv.nextElementSibling;
       if (target) {
         target.scrollIntoView(true);
@@ -382,7 +382,7 @@
     }
 
     function prevImage() {
-      const topDiv = onscreen_div();
+      const topDiv = onScreenDiv();
       const target = topDiv.previousElementSibling;
       if (target) {
         target.scrollIntoView(true);
