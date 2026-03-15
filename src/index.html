@@ -5,10 +5,6 @@
   <title>Image viewer {{path}}</title>
 
   <style>
-    body {
-      background: {{background}};
-    }
-
     img {
       display: block;
       margin-left: auto;
@@ -417,7 +413,7 @@
   </script>
 </head>
 
-<body onkeydown="bodyKeyHandler">
+<body onkeydown="bodyKeyHandler" style="background-color: {{background}};">
   {% for image in images -%}
 
   <div id="id_div_{{image.url}}" class="image_container" pv_width="{{image.width}}" pv_height="{{image.height}}"
