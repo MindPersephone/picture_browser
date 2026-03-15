@@ -1,446 +1,432 @@
 <!doctype html>
 <html>
-    <head>
-        <title>Image viewer {{path}}</title>
 
-        <style>
-            body {
-                background: {{background}};
+<head>
+  <title>Image viewer {{path}}</title>
+
+  <style>
+    img {
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    video {
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .image_container {
+      display: block;
+      margin-left: 0px;
+      margin-right: 0px;
+      margin-top: 5px;
+    }
+
+    .scroll_notify {
+      display: block;
+      position: fixed;
+      top: 0;
+      width: 120px;
+      height: 30px;
+
+
+      margin: 10px;
+      padding: 10px;
+
+      font-size: 20px;
+      color: black;
+      background-color: white;
+      border: 1px;
+      border-radius: 5px;
+    }
+  </style>
+  <script>
+    const imageOffset = {{image_offset}};
+    const displayThreshold = 900;
+
+    function calculateSize(width, height) {
+      // This gets called for divs, video, and image tags, we need to worry about the width for video and image
+      // tags so we calculate both here
+
+      let resultWidth = "auto";
+      let resultHeight = "auto";
+      if (height > window.innerHeight && width > window.innerWidth) {
+        // Assuming that the shorter dimension is the height here. Probably not running on a phone
+        if (height >= width) {
+          resultHeight = window.innerHeight - imageOffset + "px";
+          resultWidth = "auto";
+        } else {
+          let possible_width_ratio =
+            (window.innerWidth - imageOffset) / width;
+          let possible_height = height * possible_width_ratio;
+          if (possible_height > window.innerHeight) {
+            resultHeight =
+              window.innerHeight - imageOffset + "px";
+            resultWidth = "auto";
+          } else {
+            resultHeight = "auto";
+            resultWidth =
+              window.innerWidth - imageOffset + "px";
+          }
+        }
+      } else if (height > window.innerHeight) {
+        resultHeight = window.innerHeight - imageOffset + "px";
+        resultWidth = "auto";
+      } else if (width > window.innerWidth) {
+        resultHeight = "auto";
+        resultWidth = window.innerWidth - imageOffset + "px";
+      } else {
+        resultWidth = width + "px";
+        resultHeight = height + "px";
+      }
+
+      return [resultWidth, resultHeight];
+    }
+
+    function resizeVideo(theVideo) {
+      let resultSize = calculateSize(
+        theVideo.videoWidth,
+        theVideo.videoHeight,
+      );
+
+      theVideo.setAttribute("width", resultSize[0]);
+      theVideo.setAttribute("height", resultSize[1]);
+
+      // we also need to resize the parent div as that might not have been given a height when the page loaded.
+      theVideo.parentNode.style.height = resultSize[1];
+
+      console.log(
+        "VIDEO: ",
+        theVideo.id,
+        "result width: ",
+        theVideo.videoWidth,
+        " height: ",
+        theVideo.videoHeight,
+      );
+    }
+
+    function resizeDiv(theDiv) {
+      const pvWidth = theDiv.getAttribute("pv_width");
+      const pvHeight = theDiv.getAttribute("pv_height");
+
+      // Video elements might not have a valid pv_width and pv_height so we need to not do anything with those
+      // so we can resize them later.
+      if (pvWidth > 0 && pvHeight > 0) {
+        let resultSize = calculateSize(
+          theDiv.getAttribute("pv_width"),
+          theDiv.getAttribute("pv_height"),
+        );
+        theDiv.style.height = resultSize[1];
+      }
+
+      if (theDiv.hasAttribute("pv_video")) {
+        theDiv.classList.add("video_container")
+      }
+    }
+
+    function resizePlaceholderDivs() {
+      const elements =
+        document.getElementsByClassName("image_container");
+      for (var i = 0; i < elements.length; i++) {
+        resizeDiv(elements[i]);
+      }
+    }
+
+    function distanceFromOnScreen(element) {
+      let elementY = element.offsetTop;
+      let elementHeight = element.offsetHeight;
+      let elementBottom = elementY + elementHeight; //bottom
+
+      let windowY = window.pageYOffset;
+      let windowBottom = window.pageYOffset + window.innerHeight;
+
+      if (elementY > windowBottom) {
+        // off the bottom of the screen
+        return elementY - windowBottom;
+      } else if (elementBottom < windowY) {
+        // off the top of the screen
+        return windowY - elementBottom;
+      } else {
+        // on screen (even a tiny fraction of a pixel)
+        return 0;
+      }
+    }
+
+    function createVideo(parent) {
+      console.log("creating video for ", parent.id);
+      const pvUrl = parent.getAttribute("pv_url");
+
+      let resultEl = document.createElement("video");
+
+      resultEl.onloadedmetadata = function () {
+        resizeVideo(resultEl);
+      };
+
+      resultEl.id = "id_" + pvUrl;
+      resultEl.controls = true;
+      resultEl.loop = true;
+
+      let sourceEl = document.createElement("source");
+      sourceEl.src = pvUrl;
+      resultEl.appendChild(sourceEl);
+
+      return resultEl;
+    }
+
+    function createImage(parent) {
+      console.log("creating image for ", parent.id);
+      const pvWidth = parent.getAttribute("pv_width");
+      const pvHeight = parent.getAttribute("pv_height");
+      const pvUrl = parent.getAttribute("pv_url");
+
+      let resultEl = document.createElement("img");
+      resultEl.src = pvUrl;
+
+      let finalSize = calculateSize(pvWidth, pvHeight);
+      resultEl.style.width = finalSize[0];
+      resultEl.style.height = finalSize[1];
+
+      return resultEl;
+    }
+
+    function createElement(parent) {
+      if (parent.hasAttribute("pv_video")) {
+        return createVideo(parent);
+      } else {
+        return createImage(parent);
+      }
+    }
+
+    let imageLoadObserver = null;
+    let videoPlayObserver = null;
+
+    function observerCallback(entries) {
+      entries.forEach((entry) => {
+        let el = entry.target;
+        if (entry.intersectionRatio == 0) {
+          if (el.hasChildNodes) {
+            el.replaceChildren();
+            el.classList.remove("with_image");
+          }
+
+
+        } else {
+          if (!el.hasChildNodes()) {
+            console.debug(
+              "creating element for ",
+              el.id,
+            );
+            el.appendChild(createElement(el));
+            el.classList.add("with_image");
+          }
+        }
+      })
+    }
+
+    function videoPlayCallback(entries) {
+      entries.forEach((entry) => {
+        const el = entry.target;
+        const videoEl = el.firstChild;
+        // scrolled on screen before it finished loading?
+        if (videoEl) {
+          if (entry.intersectionRatio == 0) {
+            if (!videoEl.paused) {
+              videoEl.pause();
+              videoEl.setAttribute(
+                "pv_started",
+                "false",
+              );
             }
-
-            img {
-                display: block;
-                margin-left: auto;
-                margin-right: auto;
+          } else {
+            const started =
+              videoEl.getAttribute("pv_started") ||
+              "false";
+            if (videoEl.paused && started != "true") {
+              console.debug("starting video!");
+              videoEl.play();
+              videoEl.setAttribute("pv_started", "true");
             }
+          }
+        }
+      });
+    }
 
-            video {
-                display: block;
-                margin-left: auto;
-                margin-right: auto;
-            }
+    function setupObservers() {
+      const imageLoadOptions = {
+        root: null,
+        rootMargin: displayThreshold + "px",
+        threshold: 0,
+      }
+      imageLoadObserver = new IntersectionObserver(observerCallback, imageLoadOptions);
 
-            .image_container {
-                display: block;
-                margin-left: 0px;
-                margin-right: 0px;
-                margin-top: 5px;
-            }
+      const imageElements =
+        document.getElementsByClassName("image_container");
+      for (var i = 0; i < imageElements.length; i++) {
+        const el = imageElements[i];
+        imageLoadObserver.observe(el);
+      }
 
-            .scroll_notify {
-                display:block;
-                position:fixed;
-                top:0;
-                width:120px;
-                height:30px;
+      const videoPlayOptions = {
+        root: null,
+        rootMargin: "0px",
+        threshold: 0.05,
+      }
+      videoPlayObserver = new IntersectionObserver(videoPlayCallback, videoPlayOptions);
 
+      const videoElements =
+        document.getElementsByClassName("video_container");
+      for (var i = 0; i < videoElements.length; i++) {
+        const el = videoElements[i];
+        videoPlayObserver.observe(el);
+      }
+    }
 
-                margin:10px;
-                padding:10px;
+    let autoScrollSpeed = 0;
+    let autoScrollTimoutCode = 0;
+    let autoScrollNotifyTimeoutCode = 0;
 
-                font-size: 20px;
-                color: black;
-                background-color: white;
-                border: 1px;
-                border-radius: 5px;
-            }
-        </style>
-        <script>
-            const imageOffset = {{image_offset}};
-            const display_threshold = 900;
+    function autoScroll() {
+      console.log("auto_scrolling")
+      if (autoScrollSpeed == 0) {
+        autoScrollTimoutCode = 0;
+        return;
+      }
 
-            function calculateSize(width, height) {
-                // This gets called for divs, video, and image tags, we need to worry about the width for video and image
-                // tags so we calculate both here
+      nextImage();
 
-                let resultWidth = "auto";
-                let resultHeight = "auto";
-                if (height > window.innerHeight && width > window.innerWidth) {
-                    // Assuming that the shorter dimension is the height here. Probably not running on a phone
-                    if (height >= width) {
-                        resultHeight = window.innerHeight - imageOffset + "px";
-                        resultWidth = "auto";
-                    } else {
-                        let possible_width_ratio =
-                            (window.innerWidth - imageOffset) / width;
-                        let possible_height = height * possible_width_ratio;
-                        if (possible_height > window.innerHeight) {
-                            resultHeight =
-                                window.innerHeight - imageOffset + "px";
-                            resultWidth = "auto";
-                        } else {
-                            resultHeight = "auto";
-                            resultWidth =
-                                window.innerWidth - imageOffset + "px";
-                        }
-                    }
-                } else if (height > window.innerHeight) {
-                    resultHeight = window.innerHeight - imageOffset + "px";
-                    resultWidth = "auto";
-                } else if (width > window.innerWidth) {
-                    resultHeight = "auto";
-                    resultWidth = window.innerWidth - imageOffset + "px";
-                } else {
-                    resultWidth = width + "px";
-                    resultHeight = height + "px";
-                }
+      autoScrollTimoutCode = window.setTimeout(autoScroll, autoScrollSpeed);
+    }
 
-                return [resultWidth, resultHeight];
-            }
+    function clearPopupMessage() {
+      const existingEls = document.getElementsByClassName("scroll_notify");
+      for (var i = 0; i < existingEls.length; i++) {
+        const el = existingEls[i];
+        el.remove();
+      }
+      if (autoScrollNotifyTimeoutCode != 0) {
+        window.clearTimeout(autoScrollNotifyTimeoutCode);
+        autoScrollNotifyTimeoutCode = 0;
+      }
+    }
 
-            function resizeVideo(the_video) {
-                let resultSize = calculateSize(
-                    the_video.videoWidth,
-                    the_video.videoHeight,
-                );
+    function displayPopupMessage(message) {
 
-                the_video.setAttribute("width", resultSize[0]);
-                the_video.setAttribute("height", resultSize[1]);
+      clearPopupMessage();
 
-                // we also need to resize the parent div as that might not have been given a height when the page loaded.
-                the_video.parentNode.style.height = resultSize[1];
+      const newEl = document.createElement("div");
+      newEl.setAttribute("class", "scroll_notify");
+      newEl.innerText = message;
 
-                console.log(
-                    "VIDEO: ",
-                    the_video.id,
-                    "result width: ",
-                    the_video.videoWidth,
-                    " height: ",
-                    the_video.videoHeight,
-                );
-            }
+      document.body.insertBefore(newEl, document.body.firstChild);
 
-            function resizeDiv(the_div) {
-                const pv_width = the_div.getAttribute("pv_width");
-                const pv_height = the_div.getAttribute("pv_height");
+      autoScrollNotifyTimeoutCode = window.setTimeout(clearPopupMessage, 5000);
+    }
 
-                // Video elements might not have a valid pv_width and pv_height so we need to not do anything with those
-                // so we can resize them later.
-                if (pv_width > 0 && pv_height > 0) {
-                    let resultSize = calculateSize(
-                        the_div.getAttribute("pv_width"),
-                        the_div.getAttribute("pv_height"),
-                    );
-                    the_div.style.height = resultSize[1];
-                }
+    function toggleAutoScroll() {
+      if (autoScrollSpeed == 0) {
+        autoScrollSpeed = 5000;
+      } else {
+        autoScrollSpeed = autoScrollSpeed - 500;
+      }
 
-                if (the_div.hasAttribute("pv_video")) {
-                  the_div.classList.add("video_container")
-                }
-            }
+      console.log("toggling auto scroll to", autoScrollSpeed);
 
-            function resizePlaceholderDivs() {
-                const elements =
-                    document.getElementsByClassName("image_container");
-                for (var i = 0; i < elements.length; i++) {
-                    resizeDiv(elements[i]);
-                }
-            }
+      if (autoScrollSpeed > 0) {
+        displayPopupMessage("Scroll: " + autoScrollSpeed / 1000 + "s");
+      } else {
+        displayPopupMessage("Scroll off");
+      }
 
-            function distanceFromOnScreen(element) {
-                let elementY = element.offsetTop;
-                let elementHeight = element.offsetHeight;
-                let elementBottom = elementY + elementHeight; //bottom
+      // reset the timeout so we wait the new amount of time.
+      if (autoScrollTimoutCode != 0) {
+        window.clearTimeout(autoScrollTimoutCode);
+      }
+      autoScrollTimoutCode = window.setTimeout(autoScroll, autoScrollSpeed);
+    }
 
-                let windowY = window.pageYOffset;
-                let windowBottom = window.pageYOffset + window.innerHeight;
+    function stopAutoScroll() {
+      autoScrollSpeed = 0;
+      // disable auto scroll call back if enabled.
+      if (autoScrollTimoutCode != 0) {
+        window.clearTimeout(autoScrollTimoutCode);
+        displayPopupMessage("Scroll off");
+        autoScrollTimoutCode = 0;
+      }
+    }
 
-                if (elementY > windowBottom) {
-                    // off the bottom of the screen
-                    return elementY - windowBottom;
-                } else if (elementBottom < windowY) {
-                    // off the top of the screen
-                    return windowY - elementBottom;
-                } else {
-                    // on screen (even a tiny fraction of a pixel)
-                    return 0;
-                }
-            }
+    function onScreenDiv() {
+      const elements =
+        document.getElementsByClassName("with_image");
+      let result = [];
+      for (var i = 0; i < elements.length; i++) {
+        const el = elements[i];
+        const distance = distanceFromOnScreen(el);
+        if (distance == 0) {
+          return el;
+        }
+      }
+    }
 
-            function createVideo(parent) {
-                console.log("creating video for ", parent.id);
-                const pv_url = parent.getAttribute("pv_url");
+    function nextImage() {
+      const topDiv = onScreenDiv();
+      const target = topDiv.nextElementSibling;
+      if (target) {
+        target.scrollIntoView(true);
+      }
+    }
 
-                let result_el = document.createElement("video");
+    function prevImage() {
+      const topDiv = onScreenDiv();
+      const target = topDiv.previousElementSibling;
+      if (target) {
+        target.scrollIntoView(true);
+      }
+    }
 
-                result_el.onloadedmetadata = function () {
-                    resizeVideo(result_el);
-                };
+    function refresh() {
+      // Trigger a get request to /refresh then reload the page.
+      // TODO: Add some kind of spinner or similar, this can take a while.
+      fetch("/refresh").then(function (response) {
+        window.location.reload();
+      });
+    }
 
-                result_el.id = "id_" + pv_url;
-                result_el.controls = true;
-                result_el.loop = true;
+    function bodyKeyHandler(event) {
+      if (event.code == "KeyS") {
+        toggleAutoScroll();
+      }
+      if (event.code == "KeyD") {
+        stopAutoScroll();
+      }
+      if (event.code == "KeyK" || event.code == "KeyA") {
+        nextImage();
+      }
+      if (event.code == "KeyJ" || event.code == "KeyQ") {
+        prevImage();
+      }
+      if (event.code == "KeyR") {
+        refresh();
+      }
+    }
+  </script>
+</head>
 
-                let source_el = document.createElement("source");
-                source_el.src = pv_url;
-                result_el.appendChild(source_el);
+<body onkeydown="bodyKeyHandler" style="background-color: {{background}};">
+  {% for image in images -%}
 
-                return result_el;
-            }
+  <div id="id_div_{{image.url}}" class="image_container" pv_width="{{image.width}}" pv_height="{{image.height}}"
+    pv_url="/img/{{image.url}}" {% if image.is_video %} pv_video="true" {% endif %}></div>
+  {% endfor -%}
+</body>
+<script>
+  // Make sure all the divs are resized to their correct height before we do anything else
+  resizePlaceholderDivs();
 
-            function createImage(parent) {
-                console.log("creating image for ", parent.id);
-                const pv_width = parent.getAttribute("pv_width");
-                const pv_height = parent.getAttribute("pv_height");
-                const pv_url = parent.getAttribute("pv_url");
+  setupObservers();
 
-                let result_el = document.createElement("img");
-                result_el.src = pv_url;
+  window.addEventListener("keydown", bodyKeyHandler, false);
+</script>
 
-                let final_size = calculateSize(pv_width, pv_height);
-                result_el.style.width = final_size[0];
-                result_el.style.height = final_size[1];
-
-                return result_el;
-            }
-
-            function createElement(parent) {
-                if (parent.hasAttribute("pv_video")) {
-                    return createVideo(parent);
-                } else {
-                    return createImage(parent);
-                }
-            }
-
-            let imageLoadObserver = null;
-            let videoPlayObserver = null;
-
-            function observerCallback(entries) {
-              entries.forEach((entry) => {
-                let el = entry.target;
-                if (entry.intersectionRatio == 0) {
-                  if (el.hasChildNodes) {
-                      el.replaceChildren();
-                      el.classList.remove("with_image");
-                  }
-
-
-                } else {
-                    if (!el.hasChildNodes()) {
-                        console.debug(
-                            "creating element for ",
-                            el.id,
-                        );
-                        el.appendChild(createElement(el));
-                        el.classList.add("with_image");
-                    }
-                }
-              })
-            }
-
-            function videoPlayCallback(entries) {
-              entries.forEach((entry) => {
-                const el = entry.target;
-                const video_el = el.firstChild;
-                // scrolled on screen before it finished loading?
-                if (video_el) {
-                  if (entry.intersectionRatio == 0) {
-                    if (!video_el.paused) {
-                        video_el.pause();
-                        video_el.setAttribute(
-                            "pv_started",
-                            "false",
-                        );
-                    }
-                  } else {
-                    const started =
-                        video_el.getAttribute("pv_started") ||
-                        "false";
-                    if (video_el.paused && started != "true") {
-                        console.debug("starting video!");
-                        video_el.play();
-                        video_el.setAttribute("pv_started", "true");
-                    }
-                  }
-                }
-              });
-            }
-
-            function setupObservers() {
-              const imageLoadOptions = {
-                root: null,
-                rootMargin: display_threshold + "px",
-                threshold: 0,
-              }
-              imageLoadObserver = new IntersectionObserver(observerCallback, imageLoadOptions);
-
-              const imageElements =
-                  document.getElementsByClassName("image_container");
-              for (var i = 0; i < imageElements.length; i++) {
-                  const el = imageElements[i];
-                  imageLoadObserver.observe(el);
-              }
-
-              const videoPlayOptions = {
-                root: null,
-                rootMargin: "0px",
-                threshold: 0.05,
-              }
-              videoPlayObserver = new IntersectionObserver(videoPlayCallback, videoPlayOptions);
-
-              const videoElements =
-                  document.getElementsByClassName("video_container");
-              for (var i = 0; i < videoElements.length; i++) {
-                  const el = videoElements[i];
-                  videoPlayObserver.observe(el);
-              }
-            }
-
-            let auto_scroll_speed = 0;
-            let auto_scroll_timout_code = 0;
-            let auto_scroll_notify_timeout_code = 0;
-
-            function auto_scroll() {
-                console.log("auto_scrolling")
-                if (auto_scroll_speed==0) {
-                    auto_scroll_timout_code = 0;
-                    return;
-                }
-
-                next_image();
-
-                auto_scroll_timout_code = window.setTimeout(auto_scroll, auto_scroll_speed);
-            }
-
-            function clear_popup_message() {
-              const existing_els = document.getElementsByClassName("scroll_notify");
-              for (var i = 0; i < existing_els.length; i++) {
-                  const el = existing_els[i];
-                  el.remove();
-              }
-              if (auto_scroll_notify_timeout_code != 0) {
-                window.clearTimeout(auto_scroll_notify_timeout_code);
-                auto_scroll_notify_timeout_code = 0;
-              }
-            }
-
-            function display_popup_message(message) {
-
-              clear_popup_message();
-
-              const new_el = document.createElement("div");
-              new_el.setAttribute("class", "scroll_notify");
-              new_el.innerText = message;
-
-              document.body.insertBefore(new_el, document.body.firstChild);
-
-              auto_scroll_notify_timeout_code = window.setTimeout(clear_popup_message, 5000);
-            }
-
-            function toggle_auto_scroll() {
-                if (auto_scroll_speed == 0) {
-                    auto_scroll_speed = 5000;
-                } else {
-                    auto_scroll_speed = auto_scroll_speed - 500;
-                }
-
-                console.log("toggling auto scroll to", auto_scroll_speed);
-
-                if (auto_scroll_speed > 0) {
-                  display_popup_message("Scroll: " + auto_scroll_speed / 1000 + "s");
-                } else {
-                  display_popup_message("Scroll off");
-                }
-
-                // reset the timeout so we wait the new amount of time.
-                if (auto_scroll_timout_code != 0) {
-                    window.clearTimeout(auto_scroll_timout_code);
-                }
-                auto_scroll_timout_code = window.setTimeout(auto_scroll, auto_scroll_speed);
-            }
-
-            function stop_auto_scroll() {
-                auto_scroll_speed = 0;
-                // disable auto scroll call back if enabled.
-                if (auto_scroll_timout_code != 0) {
-                    window.clearTimeout(auto_scroll_timout_code);
-                    display_popup_message("Scroll off");
-                    auto_scroll_timout_code = 0;
-                }
-            }
-
-            function onscreen_div() {
-                const elements =
-                    document.getElementsByClassName("with_image");
-                let result = [];
-                for (var i = 0; i < elements.length; i++) {
-                    const el = elements[i];
-                    const distance = distanceFromOnScreen(el);
-                    if (distance == 0) {
-                        return el;
-                    }
-                }
-            }
-
-            function next_image() {
-                const top_div = onscreen_div();
-                const target = top_div.nextElementSibling;
-                if (target) {
-                    target.scrollIntoView(true);
-                }
-            }
-
-            function prev_image() {
-                const top_div = onscreen_div();
-                const target = top_div.previousElementSibling;
-                if (target) {
-                    target.scrollIntoView(true);
-                }
-            }
-
-            function refresh() {
-                // Trigger a get request to /refresh then reload the page.
-                // TODO: Add some kind of spinner or similar, this can take a while.
-                fetch("/refresh").then(function (response) {
-                    window.location.reload();
-                });
-            }
-
-            function body_key_handler(event) {
-                if (event.code == "KeyS") {
-                    toggle_auto_scroll();
-                }
-                if (event.code == "KeyD") {
-                    stop_auto_scroll();
-                }
-                if (event.code == "KeyK" || event.code == "KeyA") {
-                    next_image();
-                }
-                if (event.code == "KeyJ" || event.code == "KeyQ") {
-                    prev_image();
-                }
-                if (event.code == "KeyR") {
-                    refresh();
-                }
-            }
-        </script>
-    </head>
-    <body onkeydown="body_key_handler">
-        {% for image in images -%}
-
-        <div
-            id="id_div_{{image.url}}"
-            class="image_container"
-            pv_width="{{image.width}}"
-            pv_height="{{image.height}}"
-            pv_url="/img/{{image.url}}"
-            {%
-            if
-            image.is_video
-            %}
-            pv_video="true"
-            {%
-            endif
-            %}
-        ></div>
-        {% endfor -%}
-    </body>
-    <script>
-        // Make sure all the divs are resized to their correct height before we do anything else
-        resizePlaceholderDivs();
-
-        setupObservers();
-
-        window.addEventListener("keydown", body_key_handler, false);
-    </script>
 </html>
