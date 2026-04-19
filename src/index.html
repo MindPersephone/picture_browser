@@ -190,11 +190,16 @@
             }
 
             function createElement(parent) {
+              const pvUrl = parent.getAttribute("pv_url");
+              let linkEl = document.createElement("a");
+              a.href = pvUrl;
               if (parent.hasAttribute("pv_video")) {
-                return createVideo(parent);
+                linkEl.appendChild(createVideo(parent));
               } else {
-                return createImage(parent);
+                linkEl.appendChild(createImage(parent));
               }
+
+              return linkEl;
             }
 
             let imageLoadObserver = null;
