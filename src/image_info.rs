@@ -189,7 +189,7 @@ fn try_ffmpeg(filepath: &str) -> Result<(u64, u64), Error> {
     let mut width: u64 = 0;
     let mut height: u64 = 0;
 
-    for stream in json_result["streams"].as_array().unwrap() {
+    for stream in json_result["streams"].as_array().unwrap_or(&Vec::new()) {
         let stream_object = stream.as_object().unwrap();
         if stream_object.contains_key("width") && stream_object.contains_key("height") {
             width = width.max(stream_object.get("width").unwrap().as_u64().unwrap());

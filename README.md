@@ -106,6 +106,14 @@ This does some crude but usually effective file extension matching to decide wha
 types please feel free to add a pull request. The constants containing these are called `ALLOWED_IMG_EXTENSIONS` and
 `ALLOWED_VID_EXTENSIONS`. Due to the way html renders videos and images we need to be able to tell the two apart.
 
+## Post feature
+
+There is an optional feature called `post` which is not enabled by default. This will read a config file from the current users home directory and post a message to social media when the index page is loaded. Currently only ice shrimp is supported.
+
+The config file is json in your platforms user config location. `~/.config/picture_browser_post.json` on linux. If no config is found it will use the default config which disables posting. 
+
+I am not expecting this feature to be well used by other people so I'm not going to document it particularly well. If you want to use this feature please raise an issue asking for either more documentation or support for your social media platform of choice. (A pull request is also welcome if you figure it out your self.)
+
 ## Development
 
 Mostly a normal rust and html project, raw javascript, cargo build etc, however be careful when editing the index.html
