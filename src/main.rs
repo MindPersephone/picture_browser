@@ -17,10 +17,14 @@ use tokio::task::JoinSet;
 
 use crate::error::Error;
 use crate::image_info::{find_files, ImageInfo};
+#[cfg(feature = "post")]
+use crate::post::send_message;
 use crate::tree::{TreeNode, TreeNodeLayer};
 
 pub mod error;
 pub mod image_info;
+#[cfg(feature = "post")]
+pub mod post;
 pub mod tree;
 
 struct AppData {
@@ -221,6 +225,10 @@ async fn main() {
 
 async fn index(data: web::Data<RwLock<AppData>>) -> Result<impl Responder> {
     let data = data.read().map_err(|_e| Error::Lock())?;
+
+    #[cfg(feature = "post")]
+    send_message(&data.target_path)?;
+
     Ok(HttpResponse::Ok()
         .content_type(ContentType::html())
         .body(generate_index(

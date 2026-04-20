@@ -21,6 +21,13 @@ pub enum Error {
 
     #[error("invalid path: {0}")]
     InvalidPath(String),
+
+    #[cfg(feature = "post")]
+    #[error("could not find config path")]
+    NoConfigPath,
+    #[cfg(feature = "post")]
+    #[error("unknown api type {0}")]
+    UnknownApiType(String),
 }
 
 impl actix_web::ResponseError for Error {
