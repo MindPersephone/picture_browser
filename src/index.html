@@ -192,7 +192,7 @@
             function createElement(parent) {
               const pvUrl = parent.getAttribute("pv_url");
               let linkEl = document.createElement("a");
-              a.href = pvUrl;
+              linkEl.href = pvUrl;
               if (parent.hasAttribute("pv_video")) {
                 linkEl.appendChild(createVideo(parent));
               } else {
