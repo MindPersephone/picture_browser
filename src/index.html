@@ -231,7 +231,7 @@
             function videoPlayCallback(entries) {
               entries.forEach((entry) => {
                 const el = entry.target;
-                const videoEl = el.firstChild;
+                const videoEl = el.firstChild.firstChild;
                 // scrolled on screen before it finished loading?
                 if (videoEl) {
                   if (entry.intersectionRatio == 0) {
