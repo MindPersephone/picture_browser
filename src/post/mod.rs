@@ -76,8 +76,9 @@ pub fn send_message(src_folder: &str) -> Result<(), Error> {
             Config::default()
         }
     };
+    let last_post = LastPost::load()?;
 
-    if !should_send_message(&config, src_folder)? {
+    if !should_send_message(&config, &last_post, src_folder) {
         return Ok(());
     }
 
@@ -105,7 +106,7 @@ fn config_path() -> Result<String, Error> {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 struct LastPost {
     last_post: DateTime<Local>,
 }
@@ -156,23 +157,24 @@ impl LastPost {
     }
 }
 
-fn should_send_message(config: &Config, src_folder: &str) -> Result<bool, Error> {
-    if !config.enabled && config.enable_for.iter().any(|p| src_folder.starts_with(p)) {
-        return Ok(false);
+fn should_send_message(config: &Config, last_post: &Option<LastPost>, src_folder: &str) -> bool {
+    if !config.enabled {
+        return false;
     }
-    let last_post = LastPost::load()?;
+
+    if !config.enable_for.iter().any(|p| src_folder.starts_with(p)) {
+        return false;
+    }
 
     // there has been no last post file created so we can assume we haven't posted yet
-    if last_post.is_none() {
-        return Ok(true);
+    if last_post.is_some()
+        && Local::now().sub(last_post.unwrap().last_post)
+            <= Duration::minutes(config.repost_timeout as i64)
+    {
+        return false;
     }
 
-    let last_post = last_post.unwrap();
-    if Local::now().sub(last_post.last_post) <= Duration::minutes(config.repost_timeout as i64) {
-        return Ok(false);
-    }
-
-    Ok(true)
+    true
 }
 
 fn generate_message(config: &Config, src_folder: &str) -> Result<String, Error> {
@@ -206,7 +208,11 @@ fn select_title(config: &Config) -> &str {
 
 #[cfg(test)]
 mod tests {
-    use crate::post::{should_send_message, Config};
+    use std::ops::Sub;
+
+    use chrono::{Local, TimeDelta};
+
+    use crate::post::{should_send_message, Config, LastPost};
 
     #[test]
     fn config_not_enabled() {
@@ -216,8 +222,12 @@ mod tests {
             ..Default::default()
         };
 
+        let last_post = LastPost {
+            last_post: Local::now().sub(TimeDelta::minutes(31)),
+        };
+
         let test_path = "/home/picture/somewhere/something";
-        assert!(!should_send_message(&config, test_path));
+        assert!(!should_send_message(&config, &Some(last_post), test_path));
     }
 
     #[test]
@@ -228,7 +238,45 @@ mod tests {
             ..Default::default()
         };
 
+        let last_post = LastPost {
+            last_post: Local::now().sub(TimeDelta::minutes(31)),
+        };
+
         let test_path = "/home/fred/somewhere/something";
-        assert!(!should_send_message(&config, test_path));
+        assert!(!should_send_message(&config, &Some(last_post), test_path));
+    }
+
+    #[test]
+    fn not_yet_timed_out() {
+        let config = Config {
+            enabled: true,
+            enable_for: vec!["/home/picture/somewhere".to_string()],
+            repost_timeout: 30,
+            ..Default::default()
+        };
+
+        let last_post = LastPost {
+            last_post: Local::now().sub(TimeDelta::minutes(25)),
+        };
+
+        let test_path = "/home/picture/somewhere/something";
+        assert!(!should_send_message(&config, &Some(last_post), test_path));
+    }
+
+    #[test]
+    fn allowed_to_post() {
+        let config = Config {
+            enabled: true,
+            enable_for: vec!["/home/picture/somewhere".to_string()],
+            repost_timeout: 30,
+            ..Default::default()
+        };
+
+        let last_post = LastPost {
+            last_post: Local::now().sub(TimeDelta::minutes(31)),
+        };
+
+        let test_path = "/home/picture/somewhere/something";
+        assert!(should_send_message(&config, &Some(last_post), test_path));
     }
 }
