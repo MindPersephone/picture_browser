@@ -14,12 +14,40 @@ use crate::{error::Error, post::ice_shrimp::send_ice_shrimp_message};
 
 mod ice_shrimp;
 
+pub fn send_message(src_folder: &str) -> Result<(), Error> {
+    let config_path = config_path();
+    let config = match config_path {
+        Ok(p) => Config::load(p)?,
+        Err(e) => {
+            info!("No config path found using default: {}", e);
+            Config::default()
+        }
+    };
+    let last_post = LastPost::load()?;
+
+    if !should_send_message(&config, &last_post, src_folder) {
+        return Ok(());
+    }
+
+    let message = generate_message(&config, src_folder)?;
+
+    info!("Message: {}", &message);
+
+    LastPost::now().write()?;
+
+    match config.api_type.as_str() {
+        "ice_shrimp" => send_ice_shrimp_message(&config, &config.content_warning, &message),
+        _ => Err(Error::UnknownApiType(config.api_type.clone())),
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct Config {
     enabled: bool,
     enable_for: Vec<String>,
     display_name: String,
     titles: Vec<String>,
+    activities: Vec<String>,
     content_warning: String,
     folder_filters: Vec<Filter>,
     api_type: String,
@@ -57,6 +85,7 @@ impl Default for Config {
             enable_for: vec![],
             display_name: "Someone".to_string(),
             titles: vec![],
+            activities: vec![],
             content_warning: "".to_string(),
             folder_filters: vec![],
             api_type: "unknown".to_string(),
@@ -64,33 +93,6 @@ impl Default for Config {
             api_base_url: "https://example.com/api".to_string(),
             repost_timeout: 30,
         }
-    }
-}
-
-pub fn send_message(src_folder: &str) -> Result<(), Error> {
-    let config_path = config_path();
-    let config = match config_path {
-        Ok(p) => Config::load(p)?,
-        Err(e) => {
-            info!("No config path found using default: {}", e);
-            Config::default()
-        }
-    };
-    let last_post = LastPost::load()?;
-
-    if !should_send_message(&config, &last_post, src_folder) {
-        return Ok(());
-    }
-
-    let message = generate_message(&config, src_folder)?;
-
-    info!("Message: {}", &message);
-
-    LastPost::now().write()?;
-
-    match config.api_type.as_str() {
-        "ice_shrimp" => send_ice_shrimp_message(&config, &config.content_warning, &message),
-        _ => Err(Error::UnknownApiType(config.api_type.clone())),
     }
 }
 
@@ -180,11 +182,12 @@ fn should_send_message(config: &Config, last_post: &Option<LastPost>, src_folder
 fn generate_message(config: &Config, src_folder: &str) -> Result<String, Error> {
     let filtered_folder = filter_folder(&config, src_folder);
 
-    let title = select_title(&config);
+    let title = select_field(&config.titles);
+    let activity = select_field(&config.activities);
 
     Ok(format!(
-        "{} {} is looking at folder {} using picture browser",
-        title, config.display_name, filtered_folder
+        "{} {} is {} {} using picture browser",
+        title, config.display_name, activity, filtered_folder
     ))
 }
 
@@ -198,12 +201,8 @@ fn filter_folder(config: &Config, src_folder: &str) -> String {
     result
 }
 
-fn select_title(config: &Config) -> &str {
-    config
-        .titles
-        .choose(&mut rng())
-        .map(|s| s.as_str())
-        .unwrap_or("")
+fn select_field(list: &Vec<String>) -> &str {
+    list.choose(&mut rng()).map(|s| s.as_str()).unwrap_or("")
 }
 
 #[cfg(test)]
