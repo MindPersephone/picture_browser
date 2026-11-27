@@ -1,0 +1,30 @@
+{
+  "enabled": true,
+  "enable_for": [
+    "/home/my_name/Pictures/"
+  ],
+  "content_warning": "automated",
+  "display_name": "my_stage_name",
+  "titles": [
+    "Beautiful",
+    "Empress",
+    "Mistress",
+    "Lady",
+    "Madam",
+    ""
+  ],
+  "activities": [
+    "looking at",
+    "watching"
+  ],
+  "folder_filters": [
+    {
+      "find": "my_name",
+      "replace": "my_stage_name"
+    }
+  ],
+  "api_type": "ice_shrimp",
+  "api_key": "SOMETHING",
+  "api_base_url": "https://example.com/api",
+  "repost_timeout": 30
+}
