@@ -14,12 +14,40 @@ use crate::{error::Error, post::ice_shrimp::send_ice_shrimp_message};
 
 mod ice_shrimp;
 
+pub fn send_message(src_folder: &str) -> Result<(), Error> {
+    let config_path = config_path();
+    let config = match config_path {
+        Ok(p) => Config::load(p)?,
+        Err(e) => {
+            info!("No config path found using default: {}", e);
+            Config::default()
+        }
+    };
+    let last_post = LastPost::load()?;
+
+    if !should_send_message(&config, &last_post, src_folder) {
+        return Ok(());
+    }
+
+    let message = generate_message(&config, src_folder)?;
+
+    info!("Message: {}", &message);
+
+    LastPost::now().write()?;
+
+    match config.api_type.as_str() {
+        "ice_shrimp" => send_ice_shrimp_message(&config, &config.content_warning, &message),
+        _ => Err(Error::UnknownApiType(config.api_type.clone())),
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct Config {
     enabled: bool,
     enable_for: Vec<String>,
     display_name: String,
     titles: Vec<String>,
+    activities: Vec<String>,
     content_warning: String,
     folder_filters: Vec<Filter>,
     api_type: String,
@@ -57,6 +85,7 @@ impl Default for Config {
             enable_for: vec![],
             display_name: "Someone".to_string(),
             titles: vec![],
+            activities: vec![],
             content_warning: "".to_string(),
             folder_filters: vec![],
             api_type: "unknown".to_string(),
@@ -64,32 +93,6 @@ impl Default for Config {
             api_base_url: "https://example.com/api".to_string(),
             repost_timeout: 30,
         }
-    }
-}
-
-pub fn send_message(src_folder: &str) -> Result<(), Error> {
-    let config_path = config_path();
-    let config = match config_path {
-        Ok(p) => Config::load(p)?,
-        Err(e) => {
-            info!("No config path found using default: {}", e);
-            Config::default()
-        }
-    };
-
-    if !should_send_message(&config, src_folder)? {
-        return Ok(());
-    }
-
-    let message = generate_message(&config, src_folder)?;
-
-    info!("Message: {}", &message);
-
-    LastPost::now().write()?;
-
-    match config.api_type.as_str() {
-        "ice_shrimp" => send_ice_shrimp_message(&config, &config.content_warning, &message),
-        _ => Err(Error::UnknownApiType(config.api_type.clone())),
     }
 }
 
@@ -105,7 +108,7 @@ fn config_path() -> Result<String, Error> {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
 struct LastPost {
     last_post: DateTime<Local>,
 }
@@ -156,33 +159,35 @@ impl LastPost {
     }
 }
 
-fn should_send_message(config: &Config, src_folder: &str) -> Result<bool, Error> {
-    if !config.enabled && config.enable_for.iter().any(|p| src_folder.starts_with(p)) {
-        return Ok(false);
+fn should_send_message(config: &Config, last_post: &Option<LastPost>, src_folder: &str) -> bool {
+    if !config.enabled {
+        return false;
     }
-    let last_post = LastPost::load()?;
+
+    if !config.enable_for.iter().any(|p| src_folder.starts_with(p)) {
+        return false;
+    }
 
     // there has been no last post file created so we can assume we haven't posted yet
-    if last_post.is_none() {
-        return Ok(true);
+    if last_post.is_some()
+        && Local::now().sub(last_post.unwrap().last_post)
+            <= Duration::minutes(config.repost_timeout as i64)
+    {
+        return false;
     }
 
-    let last_post = last_post.unwrap();
-    if Local::now().sub(last_post.last_post) <= Duration::minutes(config.repost_timeout as i64) {
-        return Ok(false);
-    }
-
-    Ok(true)
+    true
 }
 
 fn generate_message(config: &Config, src_folder: &str) -> Result<String, Error> {
     let filtered_folder = filter_folder(&config, src_folder);
 
-    let title = select_title(&config);
+    let title = select_field(&config.titles);
+    let activity = select_field(&config.activities);
 
     Ok(format!(
-        "{} {} is looking at folder {} using picture browser",
-        title, config.display_name, filtered_folder
+        "{} {} is {} {} using picture browser",
+        title, config.display_name, activity, filtered_folder
     ))
 }
 
@@ -196,17 +201,17 @@ fn filter_folder(config: &Config, src_folder: &str) -> String {
     result
 }
 
-fn select_title(config: &Config) -> &str {
-    config
-        .titles
-        .choose(&mut rng())
-        .map(|s| s.as_str())
-        .unwrap_or("")
+fn select_field(list: &Vec<String>) -> &str {
+    list.choose(&mut rng()).map(|s| s.as_str()).unwrap_or("")
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::post::{should_send_message, Config};
+    use std::ops::Sub;
+
+    use chrono::{Local, TimeDelta};
+
+    use crate::post::{should_send_message, Config, LastPost};
 
     #[test]
     fn config_not_enabled() {
@@ -216,8 +221,12 @@ mod tests {
             ..Default::default()
         };
 
+        let last_post = LastPost {
+            last_post: Local::now().sub(TimeDelta::minutes(31)),
+        };
+
         let test_path = "/home/picture/somewhere/something";
-        assert!(!should_send_message(&config, test_path));
+        assert!(!should_send_message(&config, &Some(last_post), test_path));
     }
 
     #[test]
@@ -228,7 +237,45 @@ mod tests {
             ..Default::default()
         };
 
+        let last_post = LastPost {
+            last_post: Local::now().sub(TimeDelta::minutes(31)),
+        };
+
         let test_path = "/home/fred/somewhere/something";
-        assert!(!should_send_message(&config, test_path));
+        assert!(!should_send_message(&config, &Some(last_post), test_path));
+    }
+
+    #[test]
+    fn not_yet_timed_out() {
+        let config = Config {
+            enabled: true,
+            enable_for: vec!["/home/picture/somewhere".to_string()],
+            repost_timeout: 30,
+            ..Default::default()
+        };
+
+        let last_post = LastPost {
+            last_post: Local::now().sub(TimeDelta::minutes(25)),
+        };
+
+        let test_path = "/home/picture/somewhere/something";
+        assert!(!should_send_message(&config, &Some(last_post), test_path));
+    }
+
+    #[test]
+    fn allowed_to_post() {
+        let config = Config {
+            enabled: true,
+            enable_for: vec!["/home/picture/somewhere".to_string()],
+            repost_timeout: 30,
+            ..Default::default()
+        };
+
+        let last_post = LastPost {
+            last_post: Local::now().sub(TimeDelta::minutes(31)),
+        };
+
+        let test_path = "/home/picture/somewhere/something";
+        assert!(should_send_message(&config, &Some(last_post), test_path));
     }
 }
